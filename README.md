@@ -1,5 +1,5 @@
 # Global terrorism database visualization
-This repository hosts the semester project for the [Data Visualization](https://kursuskatalog.au.dk/en/course/107652/Data-Visualization) at Aarhus University, 2021.
+This repository holds the semester project for the [Data Visualization](https://kursuskatalog.au.dk/en/course/107652/Data-Visualization) at Aarhus University, 2021.
 
 ## Goal
 Make an interactive visualization of the dataset.
