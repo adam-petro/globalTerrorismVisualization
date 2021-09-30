@@ -8,8 +8,10 @@ import plotly.express as px
 import pandas as pd
 from plotly import graph_objects as go
 import numpy as np
-from dash import Input, Output
+from dash import Input, Output, State
 import json
+from scipy.sparse import data
+from sklearn.cluster import DBSCAN
 
 app = dash.Dash(__name__)
 
@@ -37,23 +39,29 @@ def binCoordinates(latitude, longitude, step_size=3):
     lonbin = longitude.map(to_bin)
     return latbin, lonbin
 
-def reRenderMap(dataset, step_size=3,):
-    dataset["latbin"],dataset["lonbin"] = binCoordinates(dataset["latitude"],dataset["longitude"], step_size)
-    dataset = dataset.groupby(['latbin','lonbin','region_txt','country_txt']).size().to_frame(name="count").reset_index()
-    dataset['size'] = np.maximum(dataset['count'],5)
-    dataset['size'] = np.minimum(dataset['size'],7000)
-    fig = go.Figure(go.Scattermapbox(lat=dataset['latbin'], lon=dataset['lonbin'],mode='markers', hoverinfo='lat+lon', marker=dict(size=dataset['size'],showscale=True)))
-    fig.update_layout(mapbox_style='open-street-map')
-    return fig 
 
-def renderMap(dataset, step_size=3, center=None, zoom=0):
-    dataset["latbin"],dataset["lonbin"] = binCoordinates(dataset["latitude"],dataset["longitude"], step_size)
-    dataset = dataset.groupby(['latbin','lonbin','region_txt','country_txt']).size().to_frame(name="count").reset_index()
-    dataset['size'] = np.maximum(dataset['count'],5)
-    dataset['size'] = np.minimum(dataset['size'],7000)
-    return px.scatter_mapbox(dataset, lat='latbin', lon='lonbin', hover_name="size",
-                     color="region_txt", size='size', size_max=50, mapbox_style='open-street-map', center=center, zoom=zoom)
 
+def renderMap(dataset, marker_visible=False, center=None, zoom=0):
+    # dataset["latbin"],dataset["lonbin"] = binCoordinates(dataset["latitude"],dataset["longitude"], step_size)
+    dataset = dataset.groupby(['longitude','latitude','region_txt','country_txt']).size().to_frame(name="count").reset_index()
+    dataset['size'] = 4
+    # return px.density_mapbox(dataset, lat='latitude', lon='longitude', hover_name="size",
+    #                  z='size', mapbox_style='light', center=center, zoom=zoom, radius=20, opacity=1)
+    layer1 = go.Densitymapbox(lon=dataset['longitude'], lat=dataset['latitude'], z=dataset['count'],
+                                    colorscale="Viridis")
+    layer2 = go.Scattermapbox(lon=dataset['longitude'], lat=dataset['latitude'], marker=dict(size=dataset['size']))
+    layers = [layer1]
+    if marker_visible:
+        layers.append(layer2)
+    fig = go.Figure(data=layers)
+    if center==None:
+        center = {"lat":0, "lon":0}
+    if zoom==None:
+        zoom = 1
+    fig.update_layout(mapbox_style="stamen-terrain",
+                    mapbox_zoom=zoom, mapbox_center = center)
+    return fig
+ 
 # a = df1.groupby(['latitude','longitude','country_txt']).size().to_frame(name="count").reset_index()
 
 
@@ -61,7 +69,7 @@ def renderMap(dataset, step_size=3, center=None, zoom=0):
 
 # groups = a.groupby(("latbin", "lonbin",))
 df1 = preprocess(df1)
-fig = renderMap(df1, step_size=0.5)
+fig = renderMap(df1)
 print("reload")
 
 # fig.show()
@@ -84,20 +92,19 @@ app.layout = html.Div(children=[
 ])
 
 @app.callback(Output('example-graph', 'figure'),
-              [Input('example-graph', 'relayoutData')])
-def display_relayout_data(relayoutData):
+              [Input('example-graph', 'relayoutData')],
+              [State("example-graph","figure")])
+def display_relayout_data(relayoutData, existingState):
     if relayoutData is not None:
         j = relayoutData
         if 'mapbox.zoom' in j:
             print(relayoutData)
-            if j['mapbox.zoom']!=0:
-                fig = renderMap(df1, 10/(j['mapbox.zoom']), j['mapbox.center'], j['mapbox.zoom'])
+            if j['mapbox.zoom']>2.5:
+                fig = renderMap(df1, marker_visible=True, center = j['mapbox.center'], zoom=j['mapbox.zoom'])
                 return fig
             else:
-                fig = renderMap(df1, center=j['mapbox.center'], zoom=j['mapbox.zoom'])
-                return fig
-    fig = renderMap(df1, center=j['mapbox.center'], zoom=j['mapbox.zoom'])
-    return fig
+                return existingState
+    return existingState
             # print(relayoutData)
 
 if __name__ == '__main__':
