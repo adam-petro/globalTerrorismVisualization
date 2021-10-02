@@ -16,6 +16,7 @@ from dash import Input, Output, State
 
 
 app = dash.Dash(__name__)
+server = app.server
 
 filepath = './dataset/globalterrorismdb_0221dist.csv'
 mapbox_access_token = (open(".mapbox_token").read())
@@ -105,5 +106,5 @@ def display_relayout_data(relayoutData, existingState):
     return existingState
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server()
 
