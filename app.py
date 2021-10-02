@@ -13,9 +13,7 @@ import pandas as pd
 from plotly import graph_objects as go
 import numpy as np
 from dash import Input, Output, State
-import json
-from scipy.sparse import data
-from sklearn.cluster import DBSCAN
+
 
 app = dash.Dash(__name__)
 
