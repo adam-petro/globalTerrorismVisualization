@@ -19,7 +19,7 @@ app = dash.Dash(__name__)
 server = app.server
 
 filepath = './dataset/globalterrorismdb_0221dist.csv'
-mapbox_access_token = (open(".mapbox_token").read())
+mapbox_access_token = "pk.eyJ1IjoicmFraGVlc2hhaCIsImEiOiJja3VjZTFld3UwYjc2Mm5ydmVnZjV4dXRqIn0.kk4UeC1uj6aE8Wq4JbS_Mw"#(open(".mapbox_token").read())
 
 df1 = pd.read_csv(filepath, delimiter=';', on_bad_lines='skip', low_memory=False)
 df1.dataframeName = 'globalterrorismdb_0718dist.csv'
