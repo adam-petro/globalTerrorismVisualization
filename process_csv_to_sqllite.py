@@ -11,7 +11,7 @@ metadata = db.MetaData()
 filepath = './dataset/globalterrorismdb_0221dist.csv'
 df = pd.read_csv(filepath, delimiter=';', on_bad_lines='skip', low_memory=False)
 
-#TODO: do any filter here
+# TODO: do any filter here
 ##############
 ##CODE HERE
 ##############

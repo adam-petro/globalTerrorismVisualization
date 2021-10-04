@@ -30,7 +30,6 @@ class TerroristData:
     def close_conn(self):
         self.conn.close()
 
-
 td = TerroristData()
 df = td.get_attact_count_by_country()
 print(df.head())
