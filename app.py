@@ -63,7 +63,7 @@ def filterDatasetsByDateRange(dataset, range):
         dataset = dataset[dataset.iyear==lowerBound]
     else:
         dataset = dataset[dataset.iyear>=lowerBound]
-        dataset = dataset[dataset.iyear<upperBound]
+        dataset = dataset[dataset.iyear<=upperBound]
     return dataset
 
 
