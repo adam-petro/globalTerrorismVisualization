@@ -11,9 +11,13 @@ metadata = db.MetaData()
 filepath = './dataset/globalterrorismdb_0221dist.csv'
 df = pd.read_csv(filepath, delimiter=';', on_bad_lines='skip', low_memory=False)
 
-# TODO: do any filter here
+# TODO: do any pre-processing here
 ##############
 ##CODE HERE
+df['latitude'] = df['latitude'].str.replace(',', '.')
+df['longitude'] = df['longitude'].str.replace(',', '.')
+df['latitude'] = pd.to_numeric(df['latitude'])
+df['longitude'] = pd.to_numeric(df['longitude'])
 ##############
 
 # Write to sql Lite

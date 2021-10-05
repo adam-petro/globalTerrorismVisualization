@@ -3,3 +3,6 @@ dataset/
 .DS_STORE
 .mapbox_token
 *.db
+.idea
+assets
+__pycache__
