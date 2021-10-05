@@ -141,12 +141,15 @@ def updateMapAccordingly(relayoutData, year_range, countries, existingState):
 
     if relayoutData is not None and call_bk_item is not None:
         j = relayoutData
+        if 'mapbox.center' not in j:
+            center = existingState['layout']['mapbox']['center']
+        else: center=j['mapbox.center']
         if 'mapbox.zoom' in j:
             if j['mapbox.zoom']>2.5:
-                fig = renderMap(df_scat_fil, df_lat_long_fil, marker_visible=True, center = j['mapbox.center'], zoom=j['mapbox.zoom'])
+                fig = renderMap(df_scat_fil, df_lat_long_fil, marker_visible=True, center = center, zoom=j['mapbox.zoom'])
                 return fig
             else:
-                return renderMap(df_scat_fil, df_lat_long_fil, center = j['mapbox.center'], zoom=j['mapbox.zoom'])
+                return renderMap(df_scat_fil, df_lat_long_fil, center = center, zoom=j['mapbox.zoom'])
         else:
             return renderMap(df_scat_fil, df_lat_long_fil)
 
