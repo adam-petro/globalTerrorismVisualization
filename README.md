@@ -15,5 +15,6 @@ Alternatively, download dataset from the link I provided you (in [Notion](https:
 3. Create an empty file called `.mapbox_token` and add your public mapbox token there.
 4. Activate whatever python environment you're using.
 5. Run `pip install -r requirements.txt` or `pip3 install -r requirements.txt`.
-6. Run `jupyter lab`.
-7. Explore the data.
+6. Create database file by running `python process_csv_to_sqlite.py` or `python3 process_csv_to_sqlite.py`.
+7. Run `jupyter lab`.
+8. Explore the data.
