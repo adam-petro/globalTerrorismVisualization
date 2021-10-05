@@ -25,10 +25,10 @@ mapbox_access_token = (open(".mapbox_token").read())
 td = TerroristData()
 
 
-def renderMap(s_dataset, d_dataset, marker_visible=False, center=None, zoom=0):
+def renderMap(s_dataset, d_dataset, marker_visible=False, center=None, zoom=1):
     density_dataset = d_dataset.groupby(['longitude','latitude']).size().to_frame(name="count").reset_index()
     layer1 = go.Densitymapbox(lon=density_dataset['longitude'], lat=density_dataset['latitude'], z=density_dataset['count'],
-                                    colorscale="Viridis")
+                                    colorscale="Viridis", radius=15)
     layers = [layer1]
 
     if marker_visible:
@@ -56,11 +56,21 @@ def renderMap(s_dataset, d_dataset, marker_visible=False, center=None, zoom=0):
     return fig
 
 
+def filterDatasetsByDateRange(dataset, range):
+    lowerBound = range[0]
+    upperBound = range[1]
+    if lowerBound==upperBound:
+        dataset = dataset[dataset.iyear==lowerBound]
+    else:
+        dataset = dataset[dataset.iyear>=lowerBound]
+        dataset = dataset[dataset.iyear<upperBound]
+    return dataset
+
+
 df_lat_long = td.get_lat_long()
 df_scat = td.get_data_for_scat()
 
 df_country = td.get_country()
-df_year = td.get_years()
 
 fig = renderMap(df_scat, df_lat_long)
 
@@ -91,14 +101,20 @@ app.layout = html.Div(children=[
         id='main-map',
         figure=fig
     ),
-    dcc.Slider(
-            id='year-slider',
-            min=df_year['iyear'].min(),
-            max=df_year['iyear'].max(),
-            value=df_year['iyear'].max(),
-            marks={str(year): str(year) for year in df_year['iyear'].unique()},
-            step=5
-        )
+    dcc.RangeSlider(id="year-slider",
+                min=1970,
+                max=2019, 
+                dots=True,
+                value=[2010,2010],
+                marks = {
+                    '1970':'1970',
+                    '1980':'1980',
+                    '1990':'1990',
+                    '2000':'2000',
+                    '2010':'2010',
+                    '2019':'2019'
+                }
+    ),
 
 ])
 
@@ -109,16 +125,15 @@ app.layout = html.Div(children=[
                 Input('country-dropdown', 'value'),
                 State("main-map", "figure"),
               )
-def display_relayout_data(relayoutData, selected_year, countries, existingState):
+def updateMapAccordingly(relayoutData, year_range, countries, existingState):
     ctx = dash.callback_context
-    print(countries)
     if not ctx.triggered:
         call_bk_item = None
     else:
         call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    df_scat_fil = df_scat[df_scat.iyear <= selected_year]
-    df_lat_long_fil = df_lat_long[df_lat_long.iyear <= selected_year]
+    df_lat_long_fil = filterDatasetsByDateRange(df_lat_long, year_range)
+    df_scat_fil = filterDatasetsByDateRange(df_scat, year_range)
 
     if countries is not None and len(countries)>0:
         df_scat_fil = df_scat_fil[df_scat_fil.country_txt.isin(countries)]
@@ -139,5 +154,5 @@ def display_relayout_data(relayoutData, selected_year, countries, existingState)
 
 
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
 

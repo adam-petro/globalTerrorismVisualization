@@ -23,6 +23,7 @@ entrypoints==0.3
 et-xmlfile==1.1.0
 Flask==2.0.1
 Flask-Compress==1.10.1
+greenlet==1.1.2
 gunicorn==20.1.0
 idna==3.2
 ipykernel==6.4.1
@@ -82,6 +83,7 @@ Send2Trash==1.8.0
 six==1.16.0
 sklearn==0.0
 sniffio==1.2.0
+SQLAlchemy==1.4.25
 tenacity==8.0.1
 terminado==0.12.1
 testpath==0.5.0
@@ -93,4 +95,3 @@ wcwidth==0.2.5
 webencodings==0.5.1
 websocket-client==1.2.1
 Werkzeug==2.0.1
-
