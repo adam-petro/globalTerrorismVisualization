@@ -14,5 +14,6 @@ Alternatively, download dataset from the link I provided you (in [Notion](https:
 2. Save the dataset in `/project_directory/dataset/`.
 3. Activate whatever python environment you're using.
 4. Run `pip install -r requirements.txt` or `pip3 install -r requirements.txt`.
-5. Run `jupyter lab`.
-6. Explore the data.
+5. Create database file `python process_csv_to_sqlite.py` or `python3 process_csv_to_sqlite.py`.
+6. Run `jupyter lab`.
+7. Explore the data.
