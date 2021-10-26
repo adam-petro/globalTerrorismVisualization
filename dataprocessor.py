@@ -12,7 +12,7 @@ server = app.server
 class TerroristData:
 
     def __init__(self):
-        self.conn = sqlite3.connect('terroristdb.db')
+        self.conn = sqlite3.connect('terroristdb.db', check_same_thread=False)
         print("Opened database successfully")
 
         # connect a database connection to the
@@ -40,23 +40,28 @@ class TerroristData:
 
     def get_lat_long(self, year=None):
         if year is not None:
-            df_all = pd.read_sql_query("SELECT country_txt, iyear, longitude,latitude, success, nkill from attacks"
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude, success, nkill from attacks"
                                        " where iyear <= {}".format(year), self.conn)
         else:
-            df_all = pd.read_sql_query("SELECT country_txt, iyear, longitude,latitude,success, nkill from attacks", self.conn)
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude,success, nkill from attacks", self.conn)
         return df_all
 
     def get_data_for_scat(self, year=None):
         if year is None:
-            df_all = pd.read_sql_query("SELECT country_txt, longitude,latitude, attacktype1_txt, iyear, "
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, attacktype1_txt, iyear, "
                                        "imonth,iday, success from attacks", self.conn)
         else:
-            df_all = pd.read_sql_query("SELECT country_txt, longitude,latitude, attacktype1_txt, iyear, "
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, attacktype1_txt, iyear, "
                                        "imonth,iday, success from attacks where "
                                        "iyear <= {}".format(year), self.conn)
-
         return df_all
 
+    def get_weapon_data(self, eventids=[]):
+        if len(eventids)==0:
+            df_all = pd.read_sql_query("SELECT eventid, weaptype1_txt, COUNT(*) as count from attacks GROUP BY eventid,weaptype1_txt", self.conn)
+        else:
+            df_all = pd.read_sql_query(f"SELECT eventid, weaptype1_txt, COUNT(*) as count from attacks WHERE eventid IN ({','.join(eventids)}) GROUP BY eventid,weaptype1_txt", self.conn)
+        return df_all
     def close_conn(self):
         self.conn.close()
 

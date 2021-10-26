@@ -7,7 +7,8 @@
 
 import dash
 from dash import dcc, html
-from matplotlib.pyplot import scatter
+from dash.exceptions import PreventUpdate
+from matplotlib.pyplot import cla, scatter
 from pandas.core.frame import DataFrame
 import plotly.express as px
 import pandas as pd
@@ -27,29 +28,28 @@ td = TerroristData()
 
 
 def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None, zoom=1):
-    if criterium=='count':
-        density_dataset = d_dataset.groupby(
-            ['longitude', 'latitude']).size().to_frame(name="count").reset_index()
-    elif criterium=='nkill':
-        density_dataset = d_dataset.groupby(
-            ['longitude', 'latitude']).nkill.sum().reset_index()
-    layer1 = go.Densitymapbox(lon=density_dataset['longitude'], lat=density_dataset['latitude'], z=density_dataset[criterium],
-                              colorscale="Viridis", radius=15)
-    layers = [layer1]
+    if not marker_visible:
+        if criterium == 'count':
+            density_dataset = d_dataset.groupby(
+                ['longitude', 'latitude']).size().to_frame(name="count").reset_index()
+        elif criterium == 'nkill':
+            density_dataset = d_dataset.groupby(
+                ['longitude', 'latitude']).nkill.sum().reset_index()
+        layer1 = go.Densitymapbox(lon=density_dataset['longitude'], lat=density_dataset['latitude'], z=density_dataset[criterium],
+                                colorscale="Viridis", radius=15)
+        layers = [layer1]
 
-    if marker_visible:
-        scatter_dataset = s_dataset.groupby(
-            ['longitude', 'latitude', 'attacktype1_txt', 'iyear', 'imonth', 'iday']).size().to_frame(name="count").reset_index()
+    elif marker_visible:
         marker = dict(
             opacity=0.3,
             allowoverlap=True,
             color="red",
         )
-        customdata = np.stack((scatter_dataset['attacktype1_txt'].array, scatter_dataset['iday'].array,
-                              scatter_dataset['imonth'].array, scatter_dataset['iyear'].array), axis=-1)
-        layer2 = go.Scattermapbox(lon=scatter_dataset['longitude'], lat=scatter_dataset['latitude'], marker=marker,
-                                  customdata=customdata, hovertemplate="<b>%{customdata[3]}-%{customdata[2]}-%{customdata[1]}</b><br><br>%{customdata[0]}")
-        layers.append(layer2)
+        customdata = np.stack((s_dataset['eventid'].array, s_dataset['attacktype1_txt'].array, s_dataset['iday'].array,
+                               s_dataset['imonth'].array, s_dataset['iyear'].array), axis=-1)
+        layer2 = go.Scattermapbox(lon=s_dataset['longitude'], lat=s_dataset['latitude'], marker=marker,
+                                  customdata=customdata, hovertemplate="<b>%{customdata[4]}-%{customdata[3]}-%{customdata[2]}</b><br><br>%{customdata[1]}")
+        layers = [layer2]
 
     fig = go.Figure(data=layers, layout=go.Layout(autosize=True,
                                                   showlegend=False,
@@ -64,6 +64,11 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
     return fig
 
+def renderPieChart(dataset):
+    fig = go.Figure(data=go.Pie(labels=dataset['weaptype1_txt'], values=dataset['count']))
+    return fig
+
+
 
 def filterDatasetByDateRange(dataset, range):
     lowerBound = range[0]
@@ -75,22 +80,25 @@ def filterDatasetByDateRange(dataset, range):
         dataset = dataset[dataset.iyear <= upperBound]
     return dataset
 
+
 def filterDatasetBySuccess(dataset, success):
     if 1 in success and 0 in success:
         return dataset
     elif 1 in success and 0 not in success:
-        return dataset[dataset.success==1]
+        return dataset[dataset.success == 1]
     elif 1 not in success and 0 in success:
-        return dataset[dataset.success==0]
+        return dataset[dataset.success == 0]
     else:
-        return dataset[dataset.success==-1]
+        return dataset[dataset.success == -1]
+
 
 df_lat_long = td.get_lat_long()
 df_scat = td.get_data_for_scat()
 
 df_country = td.get_country()
 
-fig = renderMap(df_scat, df_lat_long, 'count')
+mapFig = renderMap(df_scat, df_lat_long, 'count')
+pieChart = renderPieChart(td.get_weapon_data())
 
 print("reload")
 
@@ -132,14 +140,15 @@ app.layout = html.Div(children=[
                                             {'label': 'Unsuccessful attacks',
                                                 'value': 0},
                                         ],
-                                        value=[1,0]
+                                        value=[1, 0]
                                     ),
                                     dcc.RadioItems(
                                         className='radio-items',
                                         id='deaths-radio',
                                         options=[
                                             {'label': 'Deaths', 'value': 'nkill'},
-                                            {'label': 'No. of attacks', 'value': 'count'}
+                                            {'label': 'No. of attacks',
+                                                'value': 'count'}
                                         ],
                                         value='count'
                                     )
@@ -149,7 +158,7 @@ app.layout = html.Div(children=[
                     ),
                     dcc.Graph(
                         id='main-map',
-                        figure=fig
+                        figure=mapFig
                     ),
                     dcc.RangeSlider(id="year-slider",
                                     min=1970,
@@ -170,20 +179,33 @@ app.layout = html.Div(children=[
                                     ),
                 ]
             ),
-        ])
+        ]),
+        html.Div(className='additional-charts',
+
+                 children=[dcc.Graph(id='pie-chart',figure=go.Figure(pieChart))])
     ])
 
 ])
+@app.callback(Output('pie-chart', 'figure'),
+              Input('main-map', 'selectedData'))
+def updatePieChartAccordingly(selectedData):
+    if selectedData==None:
+        raise PreventUpdate
+    if 'points' in selectedData:
+        ids = []
+        for point in selectedData['points']:
+            ids.append(str(point['customdata'][0]))
+        return renderPieChart(td.get_weapon_data(ids))
 
 
 @app.callback(Output('main-map', 'figure'),
               Input('main-map', 'relayoutData'),
               Input('year-slider', 'value'),
               Input('country-dropdown', 'value'),
-              Input('success-checklist','value'),
+              Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
               State("main-map", "figure"),
-              State('success-checklist','value'),
+              State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
               )
 def updateMapAccordingly(relayoutData, year_range, countries, successFilter, deathsFilter, mapState, successState, deathsState):
@@ -196,15 +218,14 @@ def updateMapAccordingly(relayoutData, year_range, countries, successFilter, dea
     df_lat_long_fil = filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil = filterDatasetByDateRange(df_scat, year_range)
 
-    df_lat_long_fil = filterDatasetBySuccess(df_lat_long_fil,success=successState)
-    df_scat_fil = filterDatasetBySuccess(df_scat_fil,success=successState)
-    
+    df_lat_long_fil = filterDatasetBySuccess(
+        df_lat_long_fil, success=successState)
+    df_scat_fil = filterDatasetBySuccess(df_scat_fil, success=successState)
 
     if countries is not None and len(countries) > 0:
         df_scat_fil = df_scat_fil[df_scat_fil.country_txt.isin(countries)]
         df_lat_long_fil = df_lat_long_fil[df_lat_long_fil.country_txt.isin(
             countries)]
-    
 
     if relayoutData is not None and call_bk_item is not None:
         j = relayoutData
@@ -220,7 +241,7 @@ def updateMapAccordingly(relayoutData, year_range, countries, successFilter, dea
             else:
                 return renderMap(df_scat_fil, df_lat_long_fil, deathsState, center=center, zoom=j['mapbox.zoom'])
         else:
-            return renderMap(df_scat_fil, df_lat_long_fil, deathsState)
+            return mapState
 
     return mapState
 
