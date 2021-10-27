@@ -17,6 +17,9 @@ import numpy as np
 from dash import Input, Output, State
 from dataprocessor import TerroristData
 
+START_YEAR = 1970
+END_YEAR = 2019
+
 app = dash.Dash(__name__)
 server = app.server
 
@@ -68,7 +71,35 @@ def renderPieChart(dataset):
     fig = go.Figure(data=go.Pie(labels=dataset['weaptype1_txt'], values=dataset['count']))
     return fig
 
+def renderStackedAreaChart(dataset, default_groups):
+    x = list(range(START_YEAR, END_YEAR+1))
+    y = [0]*len(x)
+    dataset = dataset.groupby(['gname', 'iyear']).size().reset_index(name='nkill')
+    
+    # create dictionary {group -> list of kills per year}
+    groups = dataset['gname'].unique()
+    groups_dict = {}
+    for group_name in groups:
+        y = [0]*len(x)
+        group = dataset[dataset['gname'] == group_name]
+        for _, row in group.iterrows():
+            y[row.iyear - START_YEAR] = row.nkill
 
+        groups_dict[group_name] = y
+
+    # fill chart with default groups
+    default_groups = list(reversed(default_groups))     # reversed order for clearer chart
+    fig = go.Figure()
+    for group_name in default_groups:
+        fig.add_trace(go.Scatter(
+            name=group_name,
+            x=x,
+            y=groups_dict[group_name],
+            # hoveron='points+fills',
+            # hoverinfo="name+x+y",
+            stackgroup='group'
+        ))
+    return fig
 
 def filterDatasetByDateRange(dataset, range):
     lowerBound = range[0]
@@ -99,6 +130,9 @@ df_country = td.get_country()
 
 mapFig = renderMap(df_scat, df_lat_long, 'count')
 pieChart = renderPieChart(td.get_weapon_data())
+
+df_default_groups = td.get_top_groups_sorted().head(10).gname.tolist()
+stackedAreaChart = renderStackedAreaChart(td.get_groups_data(), df_default_groups)
 
 print("reload")
 
@@ -161,8 +195,8 @@ app.layout = html.Div(children=[
                         figure=mapFig
                     ),
                     dcc.RangeSlider(id="year-slider",
-                                    min=1970,
-                                    max=2019,
+                                    min=START_YEAR,
+                                    max=END_YEAR,
                                     dots=True,
                                     value=[2010, 2012],
                                     marks={
@@ -181,8 +215,9 @@ app.layout = html.Div(children=[
             ),
         ]),
         html.Div(className='additional-charts',
-
-                 children=[dcc.Graph(id='pie-chart',figure=go.Figure(pieChart))])
+                children=[dcc.Graph(id='pie-chart',figure=go.Figure(pieChart))]),
+        html.Div(className='additional-charts',
+                children=[dcc.Graph(id='stacked-area-chart', figure=go.Figure(stackedAreaChart))])
     ])
 
 ])

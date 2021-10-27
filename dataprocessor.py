@@ -62,6 +62,19 @@ class TerroristData:
         else:
             df_all = pd.read_sql_query(f"SELECT eventid, weaptype1_txt, COUNT(*) as count from attacks WHERE eventid IN ({','.join(eventids)}) GROUP BY eventid,weaptype1_txt", self.conn)
         return df_all
+
+    def get_groups_data(self, eventids=[], year_begin=None, year_end=None):
+        # filter out NaNs and unknown groups
+        if len(eventids) == 0:
+            df_all = pd.read_sql_query("SELECT eventid, iyear, gname, nkill from attacks WHERE nkill is not null and gname != 'Unknown'", self.conn)
+        else:
+            df_all = pd.read_sql_query(f"SELECT eventid, iyear, gname, nkill from attacks WHERE eventid IN ({','.join(eventids)}) and nkill is not null and gname != 'Unknown'", self.conn) 
+        return df_all
+
+    def get_top_groups_sorted(self):
+        df_all = pd.read_sql_query("SELECT gname, COUNT(*) as count from attacks WHERE nkill is not null and gname != 'Unknown' GROUP BY gname ORDER BY count DESC", self.conn)
+        return df_all
+
     def close_conn(self):
         self.conn.close()
 
