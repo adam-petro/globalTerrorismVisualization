@@ -68,7 +68,7 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     return fig
 
 def renderPieChart(dataset):
-    fig = go.Figure(data=go.Pie(labels=dataset['weaptype1_txt'], values=dataset['count']))
+    fig = go.Figure(data=go.Pie(labels=dataset['weaptype1_txt'], values=dataset['count'], customdata=dataset['eventid']))
     return fig
 
 def renderStackedAreaChart(dataset, default_groups):
@@ -100,6 +100,10 @@ def renderStackedAreaChart(dataset, default_groups):
             stackgroup='group'
         ))
     return fig
+
+def filterDatasetByWeapon(dataset,weapon):
+    dataset = dataset[dataset.weaptype1_txt==weapon]
+    return dataset
 
 def filterDatasetByDateRange(dataset, range):
     lowerBound = range[0]
@@ -215,22 +219,57 @@ app.layout = html.Div(children=[
             ),
         ]),
         html.Div(className='additional-charts',
-                children=[dcc.Graph(id='pie-chart',figure=go.Figure(pieChart))]),
+                children=[
+                    dcc.Graph(id='pie-chart',figure=go.Figure(pieChart)),
+                    html.Div(children = [html.P(id="weapon-type-text", children=[html.B("Showing for the following weapon type:")," all weapons"]),html.Button("Reset Selection", id="reset-pieChart-button" )])]),
         html.Div(className='additional-charts',
                 children=[dcc.Graph(id='stacked-area-chart', figure=go.Figure(stackedAreaChart))])
     ])
 
 ])
+
+@app.callback(Output('weapon-type-text','children'),
+              Input('pie-chart','clickData'),
+              State('pie-chart','clickData'))
+def updateTextWithSelectedWeapon(_,pieChartClickData):
+    weapon = "all weapons"
+    if pieChartClickData!=None:
+        weapon = pieChartClickData["points"][0]['label']
+    
+    return [html.B("Showing for the following weapon type:"), weapon]
+
+@app.callback(Output('pie-chart', 'clickData'),
+              Input('reset-pieChart-button','n_clicks'))
+def resetPieChartClickData(_):
+    # ctx = dash.callback_context
+    # if not ctx.triggered:
+    #     call_bk_item = None
+    # else:
+    #     call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # if call_bk_item == "reset-pieChart-button":
+        return None
+
+
+## TODO: Pie chart also needs to update by date range
 @app.callback(Output('pie-chart', 'figure'),
-              Input('main-map', 'selectedData'))
-def updatePieChartAccordingly(selectedData):
-    if selectedData==None:
-        raise PreventUpdate
-    if 'points' in selectedData:
+              Input('main-map', 'selectedData'),
+              Input('main-map','relayoutData'),
+              Input('year-slider', 'value'),
+              Input('reset-pieChart-button','n_clicks'),
+              State('year-slider','value'))
+def updatePieChartAccordingly(selectedData, relayoutData, yearSliderUpdate, n_clicks, yearSliderRange):
+    # if selectedData==None:
+    #     raise PreventUpdate
+    if selectedData is not None and 'points' in selectedData:
         ids = []
         for point in selectedData['points']:
             ids.append(str(point['customdata'][0]))
-        return renderPieChart(td.get_weapon_data(ids))
+        dataset = td.get_weapon_data(ids)
+    else:
+        dataset = td.get_weapon_data()
+    dataset = filterDatasetByDateRange(dataset,yearSliderRange)
+    return renderPieChart(dataset)
 
 
 @app.callback(Output('main-map', 'figure'),
@@ -239,19 +278,27 @@ def updatePieChartAccordingly(selectedData):
               Input('country-dropdown', 'value'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
+              Input('pie-chart','clickData'),
+              Input('reset-pieChart-button','n_clicks'),
               State("main-map", "figure"),
               State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
-              )
-def updateMapAccordingly(relayoutData, year_range, countries, successFilter, deathsFilter, mapState, successState, deathsState):
+              State('pie-chart','clickData')
+            )
+def updateMapAccordingly(relayoutData, year_range, countries, successFilter, deathsFilter, pieChartFilter, resetPieChartButton, mapState, successState, deathsState, pieChartState):
     ctx = dash.callback_context
     if not ctx.triggered:
         call_bk_item = None
     else:
         call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
-
     df_lat_long_fil = filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil = filterDatasetByDateRange(df_scat, year_range)
+
+    if pieChartState is not None:
+        weapon = pieChartState["points"][0]['label']
+        print(weapon)
+        df_lat_long_fil = filterDatasetByWeapon(df_lat_long,weapon)
+        df_scat_fil = filterDatasetByWeapon(df_scat_fil,weapon)
 
     df_lat_long_fil = filterDatasetBySuccess(
         df_lat_long_fil, success=successState)
