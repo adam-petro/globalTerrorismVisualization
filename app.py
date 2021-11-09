@@ -252,7 +252,7 @@ app.layout = html.Div(children=[
                                          "Reset Selection", className="btn btn-primary w-75", id="reset-pieChart-weapons-button")
                                  ]),
                                 html.Div(className="col d-flex flex-column justify-content-between", children=[
-                                     html.P(id="selected-points-text", children=["Displaying data for all the points visible on the map"]),
+                                     html.P(id="selected-points-text", children=[]),
                                      html.Button(
                                          "Reset Selection", className="btn btn-primary w-75", id="reset-pieChart-selectetData-button")
                                  ])
@@ -269,7 +269,7 @@ app.layout = html.Div(children=[
               Input('main-map', 'selectedData'),
               State('main-map', 'selectedData'))
 def updateTextWithSelectedPoints(_, mainMapSelectedData):
-    text="Displaying data for all the points visible on the map"
+    text="Pie Chart is displaying data for all the points visible on the map"
     if mainMapSelectedData != None and mainMapSelectedData['points'] != None and len(mainMapSelectedData['points']) != 0:
         text=f"Displaying data for {len(mainMapSelectedData['points'])} selected points on the map"
     return text
