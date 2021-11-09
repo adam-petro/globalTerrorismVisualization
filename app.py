@@ -27,7 +27,6 @@ server = app.server
 filepath = './dataset/globalterrorismdb_0221dist.csv'
 mapbox_access_token = (open(".mapbox_token").read())
 
-# print(df1.head)
 td = TerroristData()
 
 
@@ -72,8 +71,8 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
 
 
 def renderPieChart(dataset):
-    fig = go.Figure(data=go.Pie(
-        labels=dataset['weaptype1_txt'], values=dataset['count'], customdata=dataset['eventid']),
+    fig = go.Figure(data=go.Bar(
+        x=dataset['weaptype1_txt'], y=dataset['count']),
         layout=go.Layout(
         title="Weapon type",
         autosize=True,
@@ -147,7 +146,8 @@ df_scat = td.get_data_for_scat()
 df_country = td.get_country()
 
 mapFig = renderMap(df_scat, df_lat_long, 'count')
-pieChart = renderPieChart(td.get_weapon_data())
+pieChartDataset = td.get_weapon_data().groupby(['weaptype1_txt']).size().to_frame(name="count").reset_index()
+pieChart = renderPieChart(pieChartDataset)
 
 df_default_groups = td.get_top_groups_sorted().head(10).gname.tolist()
 stackedAreaChart = renderStackedAreaChart(
@@ -313,8 +313,6 @@ def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selected
         dataset=td.get_weapon_data(ids)
     else:
         dataset=td.get_weapon_data()
-    # else:
-    #     dataset = td.get_weapon_data()
     # Filter by selected countries
     if countries is not None and len(countries) > 0:
         dataset=dataset[dataset.country_txt.isin(countries)]
@@ -322,6 +320,7 @@ def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selected
     dataset=filterDatasetByDateRange(dataset, yearSliderRange)
     # Filter by successful/unsuccessful
     dataset=filterDatasetBySuccess(dataset, success=successState)
+    dataset = dataset.groupby(['weaptype1_txt']).size().to_frame(name="count").reset_index()
     return renderPieChart(dataset)
 
 @app.callback(Output('main-map', 'selectedData'),
