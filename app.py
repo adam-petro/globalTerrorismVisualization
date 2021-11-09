@@ -338,7 +338,6 @@ def resetMapSelectedData(_):
               Input('pie-chart', 'clickData'),
               Input('reset-pieChart-weapons-button', 'n_clicks'),
               State("main-map", "figure"),
-              State('main-map', 'relayoutData'),
               State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
               State('pie-chart', 'clickData'),
@@ -346,7 +345,7 @@ def resetMapSelectedData(_):
               State('country-dropdown', 'value')
               )
 def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,
-                         mapFigure, relayoutData, successState, deathsState, pieChartState, year_range, countries):
+                         mapFigure, successState, deathsState, pieChartState, year_range, countries):
     # Filter by year
     df_lat_long_fil=filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil=filterDatasetByDateRange(df_scat, year_range)
