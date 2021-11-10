@@ -20,6 +20,8 @@ from dataprocessor import TerroristData
 
 START_YEAR = 1970
 END_YEAR = 2019
+DEFAULT_RANGE = ['1970-01-01', '2019-12-31']
+DEFAULT_RADIO_VAL = 'count'
 
 app = dash.Dash(__name__, external_stylesheets=["https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"],
                 external_scripts=["https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"])
@@ -74,7 +76,7 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
 
 def renderPieChart(dataset):
     fig = go.Figure(data=go.Pie(
-        labels=dataset['weaptype1_txt'], values=dataset['count'], customdata=dataset['eventid']),
+        labels=dataset['weaptype1_txt'], values=dataset[DEFAULT_RADIO_VAL], customdata=dataset['eventid']),
         layout=go.Layout(
         title="Weapon type",
         autosize=True,
@@ -116,7 +118,7 @@ def renderStackedAreaChart(dataset, default_groups):
     return fig
 
 
-def renderRangeSlider(dataset, val):
+def renderRangeSlider(dataset, val, range):
     dataset.date = pd.to_datetime(dataset.date)
     dataset = dataset.sort_values(by='date')
 
@@ -151,12 +153,14 @@ def renderRangeSlider(dataset, val):
         type="date"
         )
     )
-    # print('inside renderSlider', fig)
-    # fig.update_layout(xaxis=)
-    # if 'xaxis' not in fig:
-    fig.update_xaxes(range=['1970-01-01', '2019-12-31'])
-    # fig['layout']['xaxis']['range'][0] = '1970-01-01'
-    # fig['layout']['xaxis']['range'][1] = '2019-12-31'
+
+    print('rendering slider')
+    fig.update_xaxes(range=range)
+    # if 'range' not in fig.layout.xaxis:
+    #     print('range not specified')
+    #     fig.update_xaxes(range=DEFAULT_RANGE)
+    # else:
+    #     fig.update_xaxes(range=range)
 
     return fig
 
@@ -171,7 +175,7 @@ def filterDatasetByDateRange(dataset, sliderState):
         print('changed data')
         date_range = [sliderState['xaxis.range[0]'], sliderState['xaxis.range[1]']]
     else:
-        date_range = ['1970-01-01', '2019-12-31']
+        date_range = DEFAULT_RANGE
     print(date_range)
     lowerBound = date_range[0].split(' ')[0].split('-')
     # lowerBound = range[0].split(' ')[0].split('-')
@@ -179,7 +183,7 @@ def filterDatasetByDateRange(dataset, sliderState):
     upperBound = date_range[1].split(' ')[0].split('-')
     # upperBound = range[1].split(' ')[0].split('-')
     upperBound = datetime(int(upperBound[0]), int(upperBound[1]), int(upperBound[2]))
-    print(dataset.head(2))
+
     dataset.date = pd.to_datetime(dataset.date, format='%Y-%m-%d')
     if lowerBound == upperBound:
         dataset = dataset[dataset.date == lowerBound]
@@ -205,9 +209,9 @@ df_scat = td.get_data_for_scat()
 df_country = td.get_country()
 df_slider = td.get_aggregated_data_by_year()
 
-mapFig = renderMap(df_scat, df_lat_long, 'count')
+mapFig = renderMap(df_scat, df_lat_long, DEFAULT_RADIO_VAL)
 pieChart = renderPieChart(td.get_weapon_data())
-rangeSliderFig = renderRangeSlider(df_slider, 'count')
+rangeSliderFig = renderRangeSlider(df_slider, DEFAULT_RADIO_VAL, DEFAULT_RANGE)
 
 df_default_groups = td.get_top_groups_sorted().head(10).gname.tolist()
 stackedAreaChart = renderStackedAreaChart(
@@ -266,7 +270,7 @@ app.layout = html.Div(children=[
                                                 {'label': 'No. of attacks',
                                                  'value': 'count'}
                                             ],
-                                            value='count'
+                                            value=DEFAULT_RADIO_VAL
                                         )
                                     ])
 
@@ -378,11 +382,18 @@ def resetMapSelectedData(_):
 
 @app.callback(Output('date-slider', 'figure'),
               Input('deaths-radio', 'value'),
-              State('deaths-radio', 'value')
+              State('deaths-radio', 'value'),
+              State('date-slider', 'relayoutData')
               )
-def updateSliderAccordingly(_, deathsState):
-    # Rerender slider based on radio selection
-    fig = renderRangeSlider(df_slider, deathsState)
+def updateSliderAccordingly(_, deathsState, sliderState):
+    # Extract current date range
+    if sliderState is not None and 'xaxis.range[0]' in sliderState:
+        print(sliderState)
+        range = [sliderState['xaxis.range[0]'].split(' ')[0], sliderState['xaxis.range[1]'].split(' ')[0]]
+    else:
+        range = DEFAULT_RANGE
+    # Rerender slider based on radio selector value
+    fig = renderRangeSlider(df_slider, deathsState, range)
     return fig
 
 @ app.callback(Output('main-map', 'figure'),
