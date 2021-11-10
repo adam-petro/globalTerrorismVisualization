@@ -40,27 +40,27 @@ class TerroristData:
 
     def get_lat_long(self, year=None):
         if year is not None:
-            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude, success, nkill, weaptype1_txt from attacks"
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, longitude, latitude, success, nkill from attacks"
                                        " where iyear <= {}".format(year), self.conn)
         else:
-            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude,success, nkill, weaptype1_txt from attacks", self.conn)
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, longitude, latitude, success, nkill from attacks", self.conn)
         return df_all
 
     def get_data_for_scat(self, year=None):
         if year is None:
             df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, attacktype1_txt, iyear, "
-                                       "imonth,iday, success, weaptype1_txt from attacks", self.conn)
+                                       "imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success from attacks", self.conn)
         else:
             df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, attacktype1_txt, iyear, "
-                                       "imonth,iday, success, weaptype1_txt from attacks where "
+                                       "imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success from attacks where "
                                        "iyear <= {}".format(year), self.conn)
         return df_all
 
     def get_weapon_data(self, eventids=[]):
         if len(eventids)==0:
-            df_all = pd.read_sql_query("SELECT eventid, weaptype1_txt, iyear, success, country_txt, COUNT(*) as count from attacks GROUP BY eventid,weaptype1_txt", self.conn)
+            df_all = pd.read_sql_query("SELECT eventid, weaptype1_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, country_txt, COUNT(*) as count from attacks GROUP BY eventid,weaptype1_txt", self.conn)
         else:
-            df_all = pd.read_sql_query(f"SELECT eventid, weaptype1_txt, iyear, success, country_txt, COUNT(*) as count from attacks WHERE eventid IN ({','.join(eventids)}) GROUP BY eventid,weaptype1_txt", self.conn)
+            df_all = pd.read_sql_query(f"SELECT eventid, weaptype1_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, country_txt, COUNT(*) as count from attacks WHERE eventid IN ({','.join(eventids)}) GROUP BY eventid,weaptype1_txt", self.conn)
         return df_all
 
     def get_groups_data(self, eventids=[], year_begin=None, year_end=None):
@@ -75,7 +75,23 @@ class TerroristData:
         df_all = pd.read_sql_query("SELECT gname, COUNT(*) as count from attacks WHERE nkill is not null and gname != 'Unknown' GROUP BY gname ORDER BY count DESC", self.conn)
         return df_all
 
+    def get_aggregated_data_by_year(self):
+        # preprocessing function can be run only once to update database
+        self.preprocess_date_and_kills()
+        df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth || '-' || iday) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY (date) ASC", self.conn)
+        return df_all
+
+    # update imonth, iday to correct values, remove NaNs from nkill column
+    def preprocess_date_and_kills(self):
+        cur = self.conn.cursor()
+        query = "UPDATE attacks SET imonth = 1 WHERE imonth = 0"
+        cur.execute(query)
+        query = "UPDATE attacks SET iday = 1 WHERE iday = 0"
+        cur.execute(query)
+        query = "UPDATE attacks SET nkill = 0 WHERE nkill is null"
+        cur.execute(query)
+
+        self.conn.commit()
+
     def close_conn(self):
         self.conn.close()
-
-

@@ -8,6 +8,7 @@
 import dash
 from dash import dcc, html
 from dash.exceptions import PreventUpdate
+from datetime import datetime
 from matplotlib.pyplot import cla, scatter
 from pandas.core.frame import DataFrame
 import plotly.express as px
@@ -115,19 +116,76 @@ def renderStackedAreaChart(dataset, default_groups):
     return fig
 
 
+def renderRangeSlider(dataset, val):
+    dataset.date = pd.to_datetime(dataset.date)
+    dataset = dataset.sort_values(by='date')
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=list(dataset['date']), y=list(dataset[val]), mode='lines'))
+    fig.update_layout(
+    xaxis=dict(
+        rangeselector=dict(
+            buttons=list([
+                dict(count=6,
+                     label="6m",
+                     step="month",
+                     stepmode="backward"),
+                dict(count=1,
+                     label="YTD",
+                     step="year",
+                     stepmode="todate"),
+                dict(count=1,
+                     label="1y",
+                     step="year",
+                     stepmode="backward"),
+                dict(count=10,
+                     label="10y",
+                     step="year",
+                     stepmode="backward"),
+                dict(step="all")
+            ])
+        ),
+        rangeslider=dict(
+            visible=True
+        ),
+        type="date"
+        )
+    )
+    # print('inside renderSlider', fig)
+    # fig.update_layout(xaxis=)
+    # if 'xaxis' not in fig:
+    fig.update_xaxes(range=['1970-01-01', '2019-12-31'])
+    # fig['layout']['xaxis']['range'][0] = '1970-01-01'
+    # fig['layout']['xaxis']['range'][1] = '2019-12-31'
+
+    return fig
+
+
 def filterDatasetByWeapon(dataset, weapon):
     dataset = dataset[dataset.weaptype1_txt == weapon]
     return dataset
 
 
-def filterDatasetByDateRange(dataset, range):
-    lowerBound = range[0]
-    upperBound = range[1]
-    if lowerBound == upperBound:
-        dataset = dataset[dataset.iyear == lowerBound]
+def filterDatasetByDateRange(dataset, sliderState):
+    if sliderState is not None and 'xaxis.range[0]' in sliderState:
+        print('changed data')
+        date_range = [sliderState['xaxis.range[0]'], sliderState['xaxis.range[1]']]
     else:
-        dataset = dataset[dataset.iyear >= lowerBound]
-        dataset = dataset[dataset.iyear <= upperBound]
+        date_range = ['1970-01-01', '2019-12-31']
+    print(date_range)
+    lowerBound = date_range[0].split(' ')[0].split('-')
+    # lowerBound = range[0].split(' ')[0].split('-')
+    lowerBound = datetime(int(lowerBound[0]), int(lowerBound[1]), int(lowerBound[2]))
+    upperBound = date_range[1].split(' ')[0].split('-')
+    # upperBound = range[1].split(' ')[0].split('-')
+    upperBound = datetime(int(upperBound[0]), int(upperBound[1]), int(upperBound[2]))
+    print(dataset.head(2))
+    dataset.date = pd.to_datetime(dataset.date, format='%Y-%m-%d')
+    if lowerBound == upperBound:
+        dataset = dataset[dataset.date == lowerBound]
+    else:
+        dataset = dataset[dataset.date >= lowerBound]
+        dataset = dataset[dataset.date <= upperBound]
     return dataset
 
 
@@ -145,9 +203,11 @@ def filterDatasetBySuccess(dataset, success):
 df_lat_long = td.get_lat_long()
 df_scat = td.get_data_for_scat()
 df_country = td.get_country()
+df_slider = td.get_aggregated_data_by_year()
 
 mapFig = renderMap(df_scat, df_lat_long, 'count')
 pieChart = renderPieChart(td.get_weapon_data())
+rangeSliderFig = renderRangeSlider(df_slider, 'count')
 
 df_default_groups = td.get_top_groups_sorted().head(10).gname.tolist()
 stackedAreaChart = renderStackedAreaChart(
@@ -217,24 +277,10 @@ app.layout = html.Div(children=[
                                 id='main-map',
                                 figure=mapFig
                             )]),
-                        dcc.RangeSlider(id="year-slider",
-                                        min=START_YEAR,
-                                        max=END_YEAR,
-                                        dots=True,
-                                        value=[2010, 2012],
-                                        marks={
-                                            '1970': '1970',
-                                            '1980': '1980',
-                                            '1990': '1990',
-                                            '2000': '2000',
-                                            '2010': '2010',
-                                            '2019': '2019'
-                                        },
-                                        tooltip={
-                                            'always_visible': True,
-                                            "placement": "bottom"
-                                        }
-                                        ),
+                    dcc.Graph(
+                        id="date-slider",
+                        figure=rangeSliderFig
+                    ),
                     ]
                 ),
             ]),
@@ -295,17 +341,17 @@ def resetPieChartClickData(_):
 @ app.callback(Output('pie-chart', 'figure'),
               Input('main-map', 'selectedData'),
               Input('main-map', 'relayoutData'),
-              Input('year-slider', 'value'),
+              Input('date-slider', 'relayoutData'),
               Input('reset-pieChart-weapons-button', 'n_clicks'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
               Input('country-dropdown', 'value'),
               State('main-map', 'selectedData'),
-              State('year-slider', 'value'),
+              State('date-slider', 'relayoutData'),
               State('success-checklist', 'value'),
               State('country-dropdown', 'value')
               )
-def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selectedData, yearSliderRange, successState, countries):
+def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selectedData, sliderState, successState, countries):
     if selectedData is not None and 'points' in selectedData:
         ids=[]
         for point in selectedData['points']:
@@ -319,7 +365,8 @@ def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selected
     if countries is not None and len(countries) > 0:
         dataset=dataset[dataset.country_txt.isin(countries)]
     # Filter by selected time window
-    dataset=filterDatasetByDateRange(dataset, yearSliderRange)
+    #extract range state 
+    dataset=filterDatasetByDateRange(dataset, sliderState)
     # Filter by successful/unsuccessful
     dataset=filterDatasetBySuccess(dataset, success=successState)
     return renderPieChart(dataset)
@@ -329,9 +376,18 @@ def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selected
 def resetMapSelectedData(_):
     return None
 
+@app.callback(Output('date-slider', 'figure'),
+              Input('deaths-radio', 'value'),
+              State('deaths-radio', 'value')
+              )
+def updateSliderAccordingly(_, deathsState):
+    # Rerender slider based on radio selection
+    fig = renderRangeSlider(df_slider, deathsState)
+    return fig
+
 @ app.callback(Output('main-map', 'figure'),
               Input('main-map', 'relayoutData'),
-              Input('year-slider', 'value'),
+              Input('date-slider', 'relayoutData'),
               Input('country-dropdown', 'value'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
@@ -341,14 +397,14 @@ def resetMapSelectedData(_):
               State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
               State('pie-chart', 'clickData'),
-              State('year-slider', 'value'),
+              State('date-slider', 'relayoutData'),
               State('country-dropdown', 'value')
               )
 def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,
-                         mapFigure, successState, deathsState, pieChartState, year_range, countries):
+                         mapFigure, successState, deathsState, pieChartState, sliderState, countries):
     # Filter by year
-    df_lat_long_fil=filterDatasetByDateRange(df_lat_long, year_range)
-    df_scat_fil=filterDatasetByDateRange(df_scat, year_range)
+    df_lat_long_fil=filterDatasetByDateRange(df_lat_long, sliderState)
+    df_scat_fil=filterDatasetByDateRange(df_scat, sliderState)
     # Filter by weapon selected
     if pieChartState is not None:
         weapon=pieChartState["points"][0]['label']
