@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "terroristdata",
+            "database": "${workspaceFolder:globalTerrorismVisualization}/terroristdb.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}

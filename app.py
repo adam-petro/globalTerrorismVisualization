@@ -26,6 +26,9 @@ mapbox_access_token = (open(".mapbox_token").read())
 # print(df1.head)
 td = TerroristData()
 
+selected_scatter = None
+current_zoom = None
+Current_center =  None
 
 def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None, zoom=1):
     if not marker_visible:
@@ -57,6 +60,44 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
                                                       accesstoken=mapbox_access_token,
                                                       style="basic",
                                                   ),))
+    if center is None:
+        center = {"lat": 0, "lon": 0}
+    if zoom is None:
+        zoom = 1
+    fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
+    return fig
+
+
+def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, center=None):
+
+    marker1 = dict(
+        opacity=0.3,
+        allowoverlap=True,
+        color="red",
+    )
+    customdata = np.stack((s_dataset['eventid'].array, s_dataset['attacktype1_txt'].array, s_dataset['iday'].array,
+                           s_dataset['imonth'].array, s_dataset['iyear'].array), axis=-1)
+    layer1 = go.Scattermapbox(lon=s_dataset['longitude'], lat=s_dataset['latitude'], marker=marker1,
+                              customdata=customdata,
+                              hovertemplate="<b>%{customdata[4]}-%{customdata[3]}-%{customdata[2]}</b><br><br>%{customdata[1]}")
+
+
+    marker2 = dict(
+        opacity=0.3,
+        allowoverlap=True,
+        color="blue",
+    )
+
+    layer2 = go.Scattermapbox(lon=sel_dataset['lon'], lat=sel_dataset['lat'], marker=marker2)
+    layers = [layer1, layer2]
+
+    fig = go.Figure(data=layers, layout=go.Layout(autosize=True,
+                                                  showlegend=False,
+                                                  mapbox=dict(
+                                                      accesstoken=mapbox_access_token,
+                                                      style="basic",
+                                                  ),))
+
     if center == None:
         center = {"lat": 0, "lon": 0}
     if zoom == None:
@@ -64,10 +105,10 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
     return fig
 
+
 def renderPieChart(dataset):
     fig = go.Figure(data=go.Pie(labels=dataset['weaptype1_txt'], values=dataset['count']))
     return fig
-
 
 
 def filterDatasetByDateRange(dataset, range):
@@ -94,13 +135,56 @@ def filterDatasetBySuccess(dataset, success):
 
 df_lat_long = td.get_lat_long()
 df_scat = td.get_data_for_scat()
-
+#df_bar = td.get_data_for_bar(None)
 df_country = td.get_country()
 
 mapFig = renderMap(df_scat, df_lat_long, 'count')
 pieChart = renderPieChart(td.get_weapon_data())
 
 print("reload")
+#----------------------------------------------------------
+# for bar plot start
+#----------------------------------------------------------
+bb_data = td.get_data_for_bbox_for_ids([])
+trace1 = go.Bar(
+    x=bb_data["attacktype1_txt"],
+    y=bb_data["cnt"],
+    marker_color=px.colors.qualitative.Dark24[0],  #color
+    textposition="outside", #text position
+    name="Attacks", #legend name
+    customdata=bb_data
+)
+# #trace2 = go.bar(
+# #    x=
+#     y=
+#     text=
+#     marker_color=px.colors.qualitative.dark24[1],
+#     textposition="outside",
+#     name="unresolved",
+# )
+data = [trace1] #combine two charts/columns
+layout = go.Layout(title="Attacks Type")
+fig1 = go.Figure(data=data, layout=layout)
+fig1.update_layout(
+    title=dict(x=0.5), #center the title
+    xaxis_title="Attack Type",#setup the x-axis title
+    yaxis_title="Count", #setup the x-axis title
+    margin=dict(l=20, r=20, t=60, b=20),#setup the margin
+    paper_bgcolor="aliceblue", #setup the background color
+)
+layout = dict(
+            xaxis=dict(
+                tickmode="array",
+                tickvals=bb_data["attacktype1_txt"],
+                ticktext=[elem[0:20] for elem in bb_data["attacktype1_txt"]]
+            )
+        )
+fig1.update_layout(layout)
+
+#fig1.update_traces(texttemplate="%{text:.2s}")
+#----------------------------------------------------------
+# for bar plot end
+#----------------------------------------------------------
 
 app.layout = html.Div(children=[
     html.H1(children='Terrorist Activities Dashboard'),
@@ -177,6 +261,11 @@ app.layout = html.Div(children=[
                                         'always_visible': True
                                     }
                                     ),
+                    dcc.Graph(
+                        id='barplot',
+                        figure=fig1,
+                        # config={"displayModeBar": False},
+                    )
                 ]
             ),
         ]),
@@ -186,9 +275,12 @@ app.layout = html.Div(children=[
     ])
 
 ])
+
+
 @app.callback(Output('pie-chart', 'figure'),
               Input('main-map', 'selectedData'))
 def updatePieChartAccordingly(selectedData):
+
     if selectedData==None:
         raise PreventUpdate
     if 'points' in selectedData:
@@ -197,6 +289,46 @@ def updatePieChartAccordingly(selectedData):
             ids.append(str(point['customdata'][0]))
         return renderPieChart(td.get_weapon_data(ids))
 
+#######################################################
+# Callback for Bar Chart Starts when selected in main map
+# When you select point in main map
+########################################################
+@app.callback(Output('barplot', 'figure'),
+             Input('main-map', 'selectedData')
+              )
+def updateBarChart(selectedData):
+
+    if selectedData is None:
+        raise PreventUpdate
+
+    global selected_scatter
+
+    if 'points' in selectedData:
+        ids = []
+        for point in selectedData['points']:
+            ids.append(str(point['customdata'][0]))
+
+        bb_data = td.get_data_for_bbox_for_ids(ids)
+        selected_scatter = selectedData
+        barplot = px.bar(
+            x=bb_data["attacktype1_txt"],
+            y=bb_data["cnt"],
+        )
+        layout = dict(
+            xaxis_title="Weapon Type",  # setup the x-axis title
+            yaxis_title="Count",  # setup the x-axis title
+            xaxis=dict(
+                tickmode="array",
+                tickvals=bb_data["attacktype1_txt"],
+                ticktext=[elem[0:10] for elem in bb_data["attacktype1_txt"]]
+            )
+        )
+        barplot.update_layout(layout)
+        return barplot
+
+###############################
+# End
+#####################################
 
 @app.callback(Output('main-map', 'figure'),
               Input('main-map', 'relayoutData'),
@@ -204,16 +336,22 @@ def updatePieChartAccordingly(selectedData):
               Input('country-dropdown', 'value'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
+              Input('main-map', 'selectedData'),
+              Input("barplot", "clickData"),
               State("main-map", "figure"),
               State('success-checklist', 'value'),
-              State('deaths-radio', 'value'),
+              State('deaths-radio', 'value')
               )
-def updateMapAccordingly(relayoutData, year_range, countries, successFilter, deathsFilter, mapState, successState, deathsState):
+def updateMapAccordingly(relayoutData, year_range, countries, successFilter, deathsFilter, selectedData,
+                         data, mapState, successState, deathsState):
     ctx = dash.callback_context
+
     if not ctx.triggered:
         call_bk_item = None
     else:
         call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
+
+
 
     df_lat_long_fil = filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil = filterDatasetByDateRange(df_scat, year_range)
@@ -226,14 +364,35 @@ def updateMapAccordingly(relayoutData, year_range, countries, successFilter, dea
         df_scat_fil = df_scat_fil[df_scat_fil.country_txt.isin(countries)]
         df_lat_long_fil = df_lat_long_fil[df_lat_long_fil.country_txt.isin(
             countries)]
+    ###############################
+    # for bar click event add scatter plot
+    #####################################
+    global current_zoom
+    global Current_center
+    if data is not None and call_bk_item == 'barplot':
+        global selected_scatter
+        select = data['points'][0]['x']
+        scatter_fil = []
+        for pt in selected_scatter['points']:
+            if pt['customdata'][1] == select:
+                scatter_fil.append([pt['lon'], pt['lat']])
 
+        df = pd.DataFrame(scatter_fil, columns=['lon', 'lat'])
+        return addSelectScatterLayer(df, df_scat_fil, df_lat_long_fil, deathsState,
+                                     zoom=current_zoom, center=Current_center)
+    ###############################
+    # End
+    #####################################
     if relayoutData is not None and call_bk_item is not None:
+
         j = relayoutData
         if 'mapbox.center' not in j:
             center = mapState['layout']['mapbox']['center']
         else:
             center = j['mapbox.center']
+        Current_center = center
         if 'mapbox.zoom' in j:
+            current_zoom = j['mapbox.zoom']
             if j['mapbox.zoom'] > 2.5:
                 fig = renderMap(df_scat_fil, df_lat_long_fil, deathsState,
                                 marker_visible=True, center=center, zoom=j['mapbox.zoom'])
