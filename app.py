@@ -70,10 +70,13 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     return fig
 
 
-def renderweaponChart(dataset):
+def renderweaponChart(dataset, highlight=None):
+    dataset['color'] = 'lightblue'
+    if highlight is not None:
+        dataset.loc[(dataset['weaptype1_txt']==highlight),['color']] = 'crimson'
     dataset = dataset.sort_values(by=['count'], ascending=False)
     fig = go.Figure(data=go.Bar(
-        x=dataset['weaptype1_txt'], y=dataset['count'], text=dataset['count']),
+        x=dataset['weaptype1_txt'], y=dataset['count'], text=dataset['count'], marker_color=dataset['color']),
         layout=go.Layout(
         title="Weapon type",
         autosize=True,
@@ -260,8 +263,8 @@ app.layout = html.Div(children=[
                              ]),
                          ])
                      ]),
-            # html.Div(className='additional-chart',
-            #          children=[dcc.Graph(id='stacked-area-chart', figure=go.Figure(stackedAreaChart))])
+            html.Div(className='additional-chart',
+                     children=[dcc.Graph(id='stacked-area-chart', figure=go.Figure(stackedAreaChart))])
         ])
     ])
 
@@ -301,12 +304,14 @@ def resetweaponChartClickData(_):
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
               Input('country-dropdown', 'value'),
+              Input('weapon-chart','clickData'),
               State('main-map', 'selectedData'),
               State('year-slider', 'value'),
               State('success-checklist', 'value'),
-              State('country-dropdown', 'value')
+              State('country-dropdown', 'value'),
+              State('weapon-chart','clickData'),
               )
-def updateweaponChartAccordingly(_, __, ___, ____, _____, ______, _______, selectedData, yearSliderRange, successState, countries):
+def updateweaponChartAccordingly(_, __, ___, ____, _____, ______, _______, ________, selectedData, yearSliderRange, successState, countries, clickData):
     if selectedData is not None and 'points' in selectedData:
         ids=[]
         for point in selectedData['points']:
@@ -322,7 +327,10 @@ def updateweaponChartAccordingly(_, __, ___, ____, _____, ______, _______, selec
     # Filter by successful/unsuccessful
     dataset=filterDatasetBySuccess(dataset, success=successState)
     dataset = dataset.groupby(['weaptype1_txt']).size().to_frame(name="count").reset_index()
-    return renderweaponChart(dataset)
+    highlight = None
+    if clickData is not None:
+        highlight = clickData['points'][0]['label']    
+    return renderweaponChart(dataset, highlight)
 
 @app.callback(Output('main-map', 'selectedData'),
               Input('reset-weaponChart-selectetData-button', 'n_clicks'))

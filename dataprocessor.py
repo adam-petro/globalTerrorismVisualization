@@ -70,6 +70,14 @@ class TerroristData:
         else:
             df_all = pd.read_sql_query(f"SELECT eventid, iyear, gname, nkill from attacks WHERE eventid IN ({','.join(eventids)}) and nkill is not null and gname != 'Unknown'", self.conn) 
         return df_all
+    
+    def get_terrorist_groups(self):
+        df_tg = pd.read_sql_query("SELECT DISTINCT	gname from attacks order by gname asc", self.conn)
+        return df_tg
+    
+    # def get_target_nationalities(self, eventids=[]):
+        # df_tg_natlty = natlty1_txt
+
 
     def get_top_groups_sorted(self):
         df_all = pd.read_sql_query("SELECT gname, COUNT(*) as count from attacks WHERE nkill is not null and gname != 'Unknown' GROUP BY gname ORDER BY count DESC", self.conn)
