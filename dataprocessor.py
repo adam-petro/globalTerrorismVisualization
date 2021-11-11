@@ -75,10 +75,10 @@ class TerroristData:
         df_all = pd.read_sql_query("SELECT gname, COUNT(*) as count from attacks WHERE nkill is not null and gname != 'Unknown' GROUP BY gname ORDER BY count DESC", self.conn)
         return df_all
 
-    def get_aggregated_data_by_year(self):
+    def get_aggregated_data_by_month(self):
         # preprocessing function can be run only once to update database
         self.preprocess_date_and_kills()
-        df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth || '-' || iday) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY (date) ASC", self.conn)
+        df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
         return df_all
 
     # update imonth, iday to correct values, remove NaNs from nkill column

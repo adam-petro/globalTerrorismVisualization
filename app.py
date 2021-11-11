@@ -119,19 +119,12 @@ def renderStackedAreaChart(dataset, default_groups):
 
 
 def renderRangeSlider(dataset, val, range):
-    dataset.date = pd.to_datetime(dataset.date)
-    dataset = dataset.sort_values(by='date')
-
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=list(dataset['date']), y=list(dataset[val]), mode='lines'))
+    fig.add_trace(go.Bar(x=list(dataset['date']), y=list(dataset[val]), marker_color='MediumPurple'))
     fig.update_layout(
     xaxis=dict(
         rangeselector=dict(
             buttons=list([
-                dict(count=6,
-                     label="6m",
-                     step="month",
-                     stepmode="backward"),
                 dict(count=1,
                      label="YTD",
                      step="year",
@@ -142,6 +135,10 @@ def renderRangeSlider(dataset, val, range):
                      stepmode="backward"),
                 dict(count=10,
                      label="10y",
+                     step="year",
+                     stepmode="backward"),
+                dict(count=20,
+                     label="20y",
                      step="year",
                      stepmode="backward"),
                 dict(step="all")
@@ -207,7 +204,7 @@ def filterDatasetBySuccess(dataset, success):
 df_lat_long = td.get_lat_long()
 df_scat = td.get_data_for_scat()
 df_country = td.get_country()
-df_slider = td.get_aggregated_data_by_year()
+df_slider = td.get_aggregated_data_by_month()
 
 mapFig = renderMap(df_scat, df_lat_long, DEFAULT_RADIO_VAL)
 pieChart = renderPieChart(td.get_weapon_data())
