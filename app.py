@@ -27,7 +27,6 @@ server = app.server
 filepath = './dataset/globalterrorismdb_0221dist.csv'
 mapbox_access_token = (open(".mapbox_token").read())
 
-# print(df1.head)
 td = TerroristData()
 
 
@@ -71,13 +70,14 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     return fig
 
 
-def renderPieChart(dataset):
-    fig = go.Figure(data=go.Pie(
-        labels=dataset['weaptype1_txt'], values=dataset['count'], customdata=dataset['eventid']),
+def renderweaponChart(dataset):
+    dataset = dataset.sort_values(by=['count'], ascending=False)
+    fig = go.Figure(data=go.Bar(
+        x=dataset['weaptype1_txt'], y=dataset['count'], text=dataset['count']),
         layout=go.Layout(
         title="Weapon type",
         autosize=True,
-        # margin=dict(t=0, b=10, l=0, r=0),
+        margin=dict(b=10, l=0, r=0),
         showlegend=False))
     return fig
 
@@ -147,7 +147,8 @@ df_scat = td.get_data_for_scat()
 df_country = td.get_country()
 
 mapFig = renderMap(df_scat, df_lat_long, 'count')
-pieChart = renderPieChart(td.get_weapon_data())
+weaponChartDataset = td.get_weapon_data().groupby(['weaptype1_txt']).size().to_frame(name="count").reset_index()
+weaponChart = renderweaponChart(weaponChartDataset)
 
 df_default_groups = td.get_top_groups_sorted().head(10).gname.tolist()
 stackedAreaChart = renderStackedAreaChart(
@@ -240,8 +241,8 @@ app.layout = html.Div(children=[
             ]),
             html.Div(className='additional-chart col-4',
                      children=[
-                        dcc.Graph(id='pie-chart',
-                                    figure=go.Figure(pieChart)),
+                        dcc.Graph(id='weapon-chart',
+                                    figure=go.Figure(weaponChart)),
                         html.Div(className="alert alert-secondary", children=[
                             html.Div(className="row", children=[
                                 html.Div(className="col d-flex flex-column justify-content-between", children=[
@@ -249,12 +250,12 @@ app.layout = html.Div(children=[
                                      html.P(id="weapon-type-text",
                                                children=["all weapons"]),
                                      html.Button(
-                                         "Reset Selection", className="btn btn-primary w-75", id="reset-pieChart-weapons-button")
+                                         "Reset Selection", className="btn btn-primary w-75", id="reset-weaponChart-weapons-button")
                                  ]),
                                 html.Div(className="col d-flex flex-column justify-content-between", children=[
                                      html.P(id="selected-points-text", children=[]),
                                      html.Button(
-                                         "Reset Selection", className="btn btn-primary w-75", id="reset-pieChart-selectetData-button")
+                                         "Reset Selection", className="btn btn-primary w-75", id="reset-weaponChart-selectetData-button")
                                  ])
                              ]),
                          ])
@@ -269,7 +270,7 @@ app.layout = html.Div(children=[
               Input('main-map', 'selectedData'),
               State('main-map', 'selectedData'))
 def updateTextWithSelectedPoints(_, mainMapSelectedData):
-    text="Pie Chart is displaying data for all the points visible on the map"
+    text="Column Chart is displaying data for all the points visible on the map"
     if mainMapSelectedData != None and mainMapSelectedData['points'] != None and len(mainMapSelectedData['points']) != 0:
         text=f"Displaying data for {len(mainMapSelectedData['points'])} selected points on the map"
     return text
@@ -277,26 +278,26 @@ def updateTextWithSelectedPoints(_, mainMapSelectedData):
 
 
 @app.callback(Output('weapon-type-text', 'children'),
-              Input('pie-chart', 'clickData'),
-              State('pie-chart', 'clickData'))
-def updateTextWithSelectedWeapon(_, pieChartClickData):
+              Input('weapon-chart', 'clickData'),
+              State('weapon-chart', 'clickData'))
+def updateTextWithSelectedWeapon(_, weaponChartClickData):
     weapon="All weapons"
-    if pieChartClickData != None:
-        weapon=pieChartClickData["points"][0]['label']
+    if weaponChartClickData != None:
+        weapon=weaponChartClickData["points"][0]['label']
     return weapon
 
 
-@app.callback(Output('pie-chart', 'clickData'),
-              Input('reset-pieChart-weapons-button', 'n_clicks'))
-def resetPieChartClickData(_):
+@app.callback(Output('weapon-chart', 'clickData'),
+              Input('reset-weaponChart-weapons-button', 'n_clicks'))
+def resetweaponChartClickData(_):
     return None
 
 
-@ app.callback(Output('pie-chart', 'figure'),
+@ app.callback(Output('weapon-chart', 'figure'),
               Input('main-map', 'selectedData'),
               Input('main-map', 'relayoutData'),
               Input('year-slider', 'value'),
-              Input('reset-pieChart-weapons-button', 'n_clicks'),
+              Input('reset-weaponChart-weapons-button', 'n_clicks'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
               Input('country-dropdown', 'value'),
@@ -305,7 +306,7 @@ def resetPieChartClickData(_):
               State('success-checklist', 'value'),
               State('country-dropdown', 'value')
               )
-def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selectedData, yearSliderRange, successState, countries):
+def updateweaponChartAccordingly(_, __, ___, ____, _____, ______, _______, selectedData, yearSliderRange, successState, countries):
     if selectedData is not None and 'points' in selectedData:
         ids=[]
         for point in selectedData['points']:
@@ -313,8 +314,6 @@ def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selected
         dataset=td.get_weapon_data(ids)
     else:
         dataset=td.get_weapon_data()
-    # else:
-    #     dataset = td.get_weapon_data()
     # Filter by selected countries
     if countries is not None and len(countries) > 0:
         dataset=dataset[dataset.country_txt.isin(countries)]
@@ -322,10 +321,11 @@ def updatePieChartAccordingly(_, __, ___, ____, _____, ______, _______, selected
     dataset=filterDatasetByDateRange(dataset, yearSliderRange)
     # Filter by successful/unsuccessful
     dataset=filterDatasetBySuccess(dataset, success=successState)
-    return renderPieChart(dataset)
+    dataset = dataset.groupby(['weaptype1_txt']).size().to_frame(name="count").reset_index()
+    return renderweaponChart(dataset)
 
 @app.callback(Output('main-map', 'selectedData'),
-              Input('reset-pieChart-selectetData-button', 'n_clicks'))
+              Input('reset-weaponChart-selectetData-button', 'n_clicks'))
 def resetMapSelectedData(_):
     return None
 
@@ -335,23 +335,23 @@ def resetMapSelectedData(_):
               Input('country-dropdown', 'value'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
-              Input('pie-chart', 'clickData'),
-              Input('reset-pieChart-weapons-button', 'n_clicks'),
+              Input('weapon-chart', 'clickData'),
+              Input('reset-weaponChart-weapons-button', 'n_clicks'),
               State("main-map", "figure"),
               State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
-              State('pie-chart', 'clickData'),
+              State('weapon-chart', 'clickData'),
               State('year-slider', 'value'),
               State('country-dropdown', 'value')
               )
 def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,
-                         mapFigure, successState, deathsState, pieChartState, year_range, countries):
+                         mapFigure, successState, deathsState, weaponChartState, year_range, countries):
     # Filter by year
     df_lat_long_fil=filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil=filterDatasetByDateRange(df_scat, year_range)
     # Filter by weapon selected
-    if pieChartState is not None:
-        weapon=pieChartState["points"][0]['label']
+    if weaponChartState is not None:
+        weapon=weaponChartState["points"][0]['label']
         df_lat_long_fil=filterDatasetByWeapon(df_lat_long, weapon)
         df_scat_fil=filterDatasetByWeapon(df_scat_fil, weapon)
     # Filter by successful/unsuccessful
