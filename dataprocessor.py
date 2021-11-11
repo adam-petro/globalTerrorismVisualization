@@ -76,22 +76,8 @@ class TerroristData:
         return df_all
 
     def get_aggregated_data_by_month(self):
-        # preprocessing function can be run only once to update database
-        self.preprocess_date_and_kills()
         df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
         return df_all
-
-    # update imonth, iday to correct values, remove NaNs from nkill column
-    def preprocess_date_and_kills(self):
-        cur = self.conn.cursor()
-        query = "UPDATE attacks SET imonth = 1 WHERE imonth = 0"
-        cur.execute(query)
-        query = "UPDATE attacks SET iday = 1 WHERE iday = 0"
-        cur.execute(query)
-        query = "UPDATE attacks SET nkill = 0 WHERE nkill is null"
-        cur.execute(query)
-
-        self.conn.commit()
 
     def close_conn(self):
         self.conn.close()
