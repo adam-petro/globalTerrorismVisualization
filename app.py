@@ -29,6 +29,7 @@ mapbox_access_token = (open(".mapbox_token").read())
 
 td = TerroristData()
 
+#global variables to handle call back between maps
 selected_scatter = None
 current_zoom = None
 Current_center =  None
@@ -73,7 +74,10 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
     return fig
 
-
+################
+# This method update color for all point relevent to clicked bar plot
+# The idea is to add another layer of scatter plot for all point related to clicked bar
+################
 def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, center=None):
     marker1 = dict(
         opacity=0.3,
@@ -97,6 +101,8 @@ def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, 
     layers = [layer1, layer2]
 
     fig = go.Figure(data=layers, layout=go.Layout(autosize=True,
+                                                  margin=dict(
+                                                      t=0, b=10, l=0, r=0),
                                                   showlegend=False,
                                                   mapbox=dict(
                                                       accesstoken=mapbox_access_token,
@@ -345,7 +351,7 @@ app.layout = html.Div(children=[
                      ]),
 
             dcc.Graph(
-                id='barplot',
+                id='attack_bar',
                 figure=fig1,
                 # config={"displayModeBar": False},
             )
@@ -383,10 +389,10 @@ def resetweaponChartClickData(_):
     return None
 
 #######################################################
-# Callback for Bar Chart Starts when selected in main map
-# When you select point in main map
+# This method is called when we select points in main map
+# This function update attack type chart
 ########################################################
-@app.callback(Output('barplot', 'figure'),
+@app.callback(Output('attack_bar', 'figure'),
              Input('main-map', 'selectedData')
               )
 def updateBarChart(selectedData):
@@ -403,7 +409,7 @@ def updateBarChart(selectedData):
 
         bb_data = td.get_data_for_bbox_for_ids(ids)
         selected_scatter = selectedData
-        barplot = px.bar(
+        attack_bar = px.bar(
             x=bb_data["attacktype1_txt"],
             y=bb_data["cnt"],
         )
@@ -416,8 +422,8 @@ def updateBarChart(selectedData):
                 ticktext=[elem[0:10] for elem in bb_data["attacktype1_txt"]]
             )
         )
-        barplot.update_layout(layout)
-        return barplot
+        attack_bar.update_layout(layout)
+        return attack_bar
 
 ###############################
 # End
@@ -468,15 +474,17 @@ def resetMapSelectedData(_):
               Input('deaths-radio', 'value'),
               Input('weapon-chart', 'clickData'),
               Input('reset-weaponChart-weapons-button', 'n_clicks'),
+              Input("attack_bar", "clickData"),
               State("main-map", "figure"),
               State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
               State('weapon-chart', 'clickData'),
+              State("attack_bar", "clickData"),
               State('year-slider', 'value'),
               State('country-dropdown', 'value')
               )
-def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,
-                         mapFigure, successState, deathsState, weaponChartState, year_range, countries):
+def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
+                         mapFigure, successState, deathsState, weaponChartState, attack_bar_state, year_range, countries):
     # Filter by year
     df_lat_long_fil=filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil=filterDatasetByDateRange(df_scat, year_range)
@@ -494,9 +502,41 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,
         df_scat_fil=df_scat_fil[df_scat_fil.country_txt.isin(countries)]
         df_lat_long_fil=df_lat_long_fil[df_lat_long_fil.country_txt.isin(
             countries)]
+
+    zoom = mapFigure['layout']['mapbox']['zoom']
+    center = mapFigure['layout']['mapbox']['center']
+    ###############################
+    # This step is used to handle bar click event and update map accordingly
+    #####################################
+    # we need context as once bar is clicked event remains active
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        call_bk_item = None
+    else:
+        call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Store current zon and center so when adding layer, map position doesnot change
+    global current_zoom
+    current_zoom = zoom
+    global Current_center
+    Current_center = center
+    if attack_bar_state is not None and call_bk_item == 'attack_bar':
+        global selected_scatter
+        select = attack_bar_state["points"][0]['x']
+        scatter_fil = []
+        for pt in selected_scatter['points']:
+            if pt['customdata'][1] == select:
+                scatter_fil.append([pt['lon'], pt['lat']])
+
+        df = pd.DataFrame(scatter_fil, columns=['lon', 'lat'])
+        return addSelectScatterLayer(df, df_scat_fil, df_lat_long_fil, deathsState,
+                                     zoom=zoom, center=center)
+    ###############################
+    # End
+    #####################################
+
     # Update the map with the existing or new data
-    zoom=mapFigure['layout']['mapbox']['zoom']
-    center=mapFigure['layout']['mapbox']['center']
     if zoom > 2.5:
         fig=renderMap(df_scat_fil, df_lat_long_fil, deathsState,
                         marker_visible=True, center=center, zoom=zoom)
