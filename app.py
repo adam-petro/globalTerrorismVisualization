@@ -30,12 +30,8 @@ mapbox_access_token = (open(".mapbox_token").read())
 td = TerroristData()
 
 #global variables to handle call back between maps
-selected_scatter = None
-current_zoom = None
-Current_center =  None
 
-
-def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None, zoom=1):
+def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None, zoom=1, highlight=None):
     if not marker_visible:
         if criterium == 'count':
             density_dataset = d_dataset.groupby(
@@ -58,6 +54,16 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
         layer2 = go.Scattermapbox(lon=s_dataset['longitude'], lat=s_dataset['latitude'], marker=marker,
                                   customdata=customdata, hovertemplate="<b>%{customdata[4]}-%{customdata[3]}-%{customdata[2]}</b><br><br>%{customdata[1]}")
         layers = [layer2]
+        if highlight is not None:
+            marker2 = dict(
+                opacity=0.3,
+                allowoverlap=True,
+                color="blue",
+            )
+            layer2 = go.Scattermapbox(lon=highlight['longitude'], lat=highlight['latitude'], marker=marker2)
+            layers.append(layer2)
+
+
 
     fig = go.Figure(data=layers, layout=go.Layout(autosize=True,
                                                   margin=dict(
@@ -161,9 +167,23 @@ def renderStackedAreaChart(dataset, default_groups):
         ))
     return fig
 
-
+def filterDatasetByIds(dataset,ids=[]):
+    if len(ids)==0:
+        return dataset
+    bool_filter = dataset['eventid'].isin(ids)
+    return dataset[bool_filter]
+    
 def filterDatasetByWeapon(dataset, weapon):
+    if dataset is None or weapon is None:
+        return
     dataset = dataset[dataset.weaptype1_txt == weapon]
+    return dataset
+
+def filterDatasetByAttacktype(dataset, attackType):
+    if dataset is None or attackType is None:
+        return 
+    print(dataset.head)
+    dataset = dataset[dataset.attacktype1_txt == attackType]
     return dataset
 
 
@@ -336,7 +356,7 @@ app.layout = html.Div(children=[
                          ])
                      ]),
             dcc.Graph(
-                id='attack_bar',
+                id='attack-type-chart',
                 figure=fig1,
                 # config={"displayModeBar": False},
             )
@@ -374,10 +394,10 @@ def resetweaponChartClickData(_):
     return None
 
 
-@app.callback(Output('attack_bar', 'figure'),
+@app.callback(Output('attack-type-chart', 'figure'),
              Input('main-map', 'selectedData')
               )
-def updateBarChart(selectedData):
+def updateAttackTypeChart(selectedData):
 
     if selectedData is None:
         raise PreventUpdate
@@ -391,7 +411,7 @@ def updateBarChart(selectedData):
 
         bb_data = td.get_data_for_bbox_for_ids(ids)
         selected_scatter = selectedData
-        attack_bar = px.bar(
+        attack_type = px.bar(
             x=bb_data["attacktype1_txt"],
             y=bb_data["cnt"],
         )
@@ -404,8 +424,8 @@ def updateBarChart(selectedData):
                 ticktext=[elem[0:10] for elem in bb_data["attacktype1_txt"]]
             )
         )
-        attack_bar.update_layout(layout)
-        return attack_bar
+        attack_type.update_layout(layout)
+        return attack_type
 
 
 @ app.callback(Output('weapon-chart', 'figure'),
@@ -432,7 +452,6 @@ def updateweaponChartAccordingly(_, __, ___, ____, _____, ______, _______, _____
     else:
         dataset=td.get_weapon_data()
     # Filter by selected countries
-    print(dataset.head())
     if countries is not None and len(countries) > 0:
         dataset=dataset[dataset.country_txt.isin(countries)]
     # Filter by selected time window
@@ -458,25 +477,21 @@ def resetMapSelectedData(_):
               Input('deaths-radio', 'value'),
               Input('weapon-chart', 'clickData'),
               Input('reset-weaponChart-weapons-button', 'n_clicks'),
-              Input("attack_bar", "clickData"),
+              Input("attack-type-chart", "clickData"),
               State("main-map", "figure"),
               State('success-checklist', 'value'),
               State('deaths-radio', 'value'),
               State('weapon-chart', 'clickData'),
-              State("attack_bar", "clickData"),
+              State("attack-type-chart", "clickData"),
               State('year-slider', 'value'),
-              State('country-dropdown', 'value')
+              State('country-dropdown', 'value'),
+              State('main-map','selectedData')
               )
 def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
-                         mapFigure, successState, deathsState, weaponChartState, attack_bar_state, year_range, countries):
+                         mapFigure, successState, deathsState, weaponChartState, attackTypeState, year_range, countries, mainMapSelectedData):
     # Filter by year
     df_lat_long_fil=filterDatasetByDateRange(df_lat_long, year_range)
     df_scat_fil=filterDatasetByDateRange(df_scat, year_range)
-    # Filter by weapon selected
-    if weaponChartState is not None:
-        weapon=weaponChartState["points"][0]['label']
-        df_lat_long_fil=filterDatasetByWeapon(df_lat_long, weapon)
-        df_scat_fil=filterDatasetByWeapon(df_scat_fil, weapon)
     # Filter by successful/unsuccessful
     df_lat_long_fil=filterDatasetBySuccess(
         df_lat_long_fil, success=successState)
@@ -490,39 +505,34 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
     zoom = mapFigure['layout']['mapbox']['zoom']
     center = mapFigure['layout']['mapbox']['center']
 
-
-    ctx = dash.callback_context
-
-    if not ctx.triggered:
-        call_bk_item = None
-    else:
-        call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    # Store current zon and center so when adding layer, map position doesnot change
-    global current_zoom
-    current_zoom = zoom
-    global Current_center
-    Current_center = center
-    if attack_bar_state is not None and call_bk_item == 'attack_bar':
-        global selected_scatter
-        select = attack_bar_state["points"][0]['x']
-        scatter_fil = []
+    highlight=None
+    ids = []
+    ## Get all the selected points
+    if mainMapSelectedData != None and mainMapSelectedData['points'] != None and len(mainMapSelectedData['points']) != 0:
         for pt in selected_scatter['points']:
-            if pt['customdata'][1] == select:
-                scatter_fil.append([pt['lon'], pt['lat']])
+            ids.append(pt['customdata'][0])
+    ## Highlight the selected
+    if attackTypeState is not None:
+        attack_type=attackTypeState["points"][0]['label']
+        highlight = filterDatasetByIds(df_scat_fil,ids)
+        highlight=filterDatasetByAttacktype(highlight, attack_type)
+        df_lat_long_fil=filterDatasetByAttacktype(df_lat_long, attack_type)
 
-        df = pd.DataFrame(scatter_fil, columns=['lon', 'lat'])
-        return addSelectScatterLayer(df, df_scat_fil, df_lat_long_fil, deathsState,
-                                     zoom=zoom, center=center)
+    
+    if weaponChartState is not None:
+        weapon=weaponChartState["points"][0]['label']
+        highlight=filterDatasetByWeapon(highlight, weapon)
+        highlight=filterDatasetByWeapon(highlight, weapon)
+        df_lat_long_fil=filterDatasetByWeapon(df_lat_long, weapon)
 
 
     # Update the map with the existing or new data
     if zoom > 2.5:
         fig=renderMap(df_scat_fil, df_lat_long_fil, deathsState,
-                        marker_visible=True, center=center, zoom=zoom)
+                        marker_visible=True, center=center, zoom=zoom,highlight=highlight)
         return fig
     else:
-        return renderMap(df_scat_fil, df_lat_long_fil, deathsState, center=center, zoom=zoom)
+        return renderMap(df_scat_fil, df_lat_long_fil, deathsState, center=center, zoom=zoom, highlight=highlight)
 
 
 if __name__ == '__main__':

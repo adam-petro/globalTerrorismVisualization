@@ -41,10 +41,10 @@ class TerroristData:
     def get_lat_long(self, year=None):
         if year is not None:
 
-            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude, success, nkill, weaptype1_txt from attacks"
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude, success, nkill,  attacktype1_txt, weaptype1_txt from attacks"
                                        " where iyear <= {}".format(year), self.conn)
         else:
-            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude,success, nkill, weaptype1_txt from attacks", self.conn)
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, iyear, longitude,latitude,success, nkill,  attacktype1_txt, weaptype1_txt from attacks", self.conn)
         return df_all
 
     def get_data_for_scat(self, year=None):
