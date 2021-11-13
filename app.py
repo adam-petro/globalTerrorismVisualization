@@ -74,10 +74,7 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
     return fig
 
-################
-# This method update color for all point relevent to clicked bar plot
-# The idea is to add another layer of scatter plot for all point related to clicked bar
-################
+
 def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, center=None):
     marker1 = dict(
         opacity=0.3,
@@ -201,9 +198,6 @@ stackedAreaChart = renderStackedAreaChart(
     td.get_groups_data(), df_default_groups)
 
 print("reload")
-#----------------------------------------------------------
-# for bar plot start
-#----------------------------------------------------------
 bb_data = td.get_data_for_bbox_for_ids([])
 trace1 = go.Bar(
     x=bb_data["attacktype1_txt"],
@@ -213,14 +207,7 @@ trace1 = go.Bar(
     name="Attacks", #legend name
     customdata=bb_data
 )
-# #trace2 = go.bar(
-# #    x=
-#     y=
-#     text=
-#     marker_color=px.colors.qualitative.dark24[1],
-#     textposition="outside",
-#     name="unresolved",
-# )
+
 data = [trace1] #combine two charts/columns
 layout = go.Layout(title="Attacks Type")
 fig1 = go.Figure(data=data, layout=layout)
@@ -239,11 +226,6 @@ layout = dict(
             )
         )
 fig1.update_layout(layout)
-
-#fig1.update_traces(texttemplate="%{text:.2s}")
-#----------------------------------------------------------
-# for bar plot end
-#----------------------------------------------------------
 
 app.layout = html.Div(children=[
     html.Div(className='main-body container-fluid', children=[
@@ -388,10 +370,7 @@ def updateTextWithSelectedWeapon(_, weaponChartClickData):
 def resetweaponChartClickData(_):
     return None
 
-#######################################################
-# This method is called when we select points in main map
-# This function update attack type chart
-########################################################
+
 @app.callback(Output('attack_bar', 'figure'),
              Input('main-map', 'selectedData')
               )
@@ -424,10 +403,6 @@ def updateBarChart(selectedData):
         )
         attack_bar.update_layout(layout)
         return attack_bar
-
-###############################
-# End
-#####################################
 
 
 @ app.callback(Output('weapon-chart', 'figure'),
@@ -505,10 +480,8 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
 
     zoom = mapFigure['layout']['mapbox']['zoom']
     center = mapFigure['layout']['mapbox']['center']
-    ###############################
-    # This step is used to handle bar click event and update map accordingly
-    #####################################
-    # we need context as once bar is clicked event remains active
+
+
     ctx = dash.callback_context
 
     if not ctx.triggered:
@@ -532,9 +505,7 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
         df = pd.DataFrame(scatter_fil, columns=['lon', 'lat'])
         return addSelectScatterLayer(df, df_scat_fil, df_lat_long_fil, deathsState,
                                      zoom=zoom, center=center)
-    ###############################
-    # End
-    #####################################
+
 
     # Update the map with the existing or new data
     if zoom > 2.5:

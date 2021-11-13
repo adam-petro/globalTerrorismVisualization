@@ -80,20 +80,6 @@ class TerroristData:
     def close_conn(self):
         self.conn.close()
 
-    # def get_data_for_bbox_for_ids(self, eventids=[]):
-    #     if len(eventids) == 0:
-    #         df_all = pd.read_sql_query("SELECT attacktype1_txt, COUNT(attacktype1_txt) as cnt, "
-    #                                    "GROUP_CONCAT(DISTINCT location) loc, "
-    #                                    "GROUP_CONCAT(DISTINCT targtype1_txt) targ  "
-    #                                    " from attacks GROUP BY attacktype1_txt", self.conn)
-    #     else:
-    #         df_all = pd.read_sql_query(f"SELECT attacktype1_txt, COUNT(attacktype1_txt) as cnt"
-    #                                    "GROUP_CONCAT(DISTINCT location) loc, "
-    #                                    "GROUP_CONCAT(DISTINCT targtype1_txt) targ  "
-    #                                    f" from attacks WHERE eventid IN ({','.join(eventids)}) GROUP BY "
-    #                                    f" attacktype1_txt", self.conn)
-    #     return df_all
-
     def get_data_for_bbox_for_ids(self, eventids=[]):
         if len(eventids) == 0:
             df_all = pd.read_sql_query("SELECT attacktype1_txt, COUNT(attacktype1_txt) as cnt, "
