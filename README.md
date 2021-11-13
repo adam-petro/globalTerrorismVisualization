@@ -12,7 +12,9 @@ Make an interactive visualization of the dataset.
 1. Download dataset from https://start.umd.edu/gtd/. You need to create an individual account.  
 Alternatively, download dataset from the link I provided you (in [Notion](https://www.notion.so/Global-terrorism-database-visualization-c2c02ba71f414701a77fc86f19ef1ce8)).
 2. Save the dataset in `/project_directory/dataset/`.
-3. Activate whatever python environment you're using.
-4. Run `pip install -r requirements.txt` or `pip3 install -r requirements.txt`.
-5. Run `jupyter lab`.
-6. Explore the data.
+3. Create an empty file called `.mapbox_token` and add your public mapbox token there.
+4. Activate whatever python environment you're using.
+5. Run `pip install -r requirements.txt` or `pip3 install -r requirements.txt`.
+6. Create database file by running `python process_csv_to_sqlite.py` or `python3 process_csv_to_sqlite.py`.
+7. Run `jupyter lab`.
+8. Explore the data.

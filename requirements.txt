@@ -7,12 +7,13 @@ Babel==2.9.1
 backcall==0.2.0
 bleach==4.1.0
 Brotli==1.0.9
-certifi==2021.5.30
+certifi==2021.10.8
 cffi==1.14.6
 charset-normalizer==2.0.6
 click==8.0.1
 cycler==0.10.0
 dash==2.0.0
+dash-bootstrap-components==1.0.0
 dash-core-components==2.0.0
 dash-html-components==2.0.0
 dash-table==5.0.0
@@ -23,6 +24,8 @@ entrypoints==0.3
 et-xmlfile==1.1.0
 Flask==2.0.1
 Flask-Compress==1.10.1
+greenlet==1.1.2
+gunicorn==20.1.0
 idna==3.2
 ipykernel==6.4.1
 ipython==7.28.0
@@ -81,6 +84,7 @@ Send2Trash==1.8.0
 six==1.16.0
 sklearn==0.0
 sniffio==1.2.0
+SQLAlchemy==1.4.25
 tenacity==8.0.1
 terminado==0.12.1
 testpath==0.5.0
