@@ -117,7 +117,8 @@ def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, 
 def renderweaponChart(dataset, highlight=None):
     dataset['color'] = 'lightblue'
     if highlight is not None:
-        dataset.loc[(dataset['weaptype1_txt']==highlight),['color']] = 'crimson'    dataset = dataset.sort_values(by=['count'], ascending=False)
+        dataset.loc[(dataset['weaptype1_txt']==highlight),['color']] = 'crimson'    
+    dataset = dataset.sort_values(by=['count'], ascending=False)
     fig = go.Figure(data=go.Bar(
         x=dataset['weaptype1_txt'], y=dataset['count'], text=dataset['count'], marker_color=dataset['color']),
         layout=go.Layout(
@@ -431,6 +432,7 @@ def updateweaponChartAccordingly(_, __, ___, ____, _____, ______, _______, _____
     else:
         dataset=td.get_weapon_data()
     # Filter by selected countries
+    print(dataset.head())
     if countries is not None and len(countries) > 0:
         dataset=dataset[dataset.country_txt.isin(countries)]
     # Filter by selected time window
