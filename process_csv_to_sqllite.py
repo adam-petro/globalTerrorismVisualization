@@ -22,6 +22,7 @@ df['longitude'] = pd.to_numeric(df['longitude'])
 df['imonth'] = df['imonth'].replace(0, 1)
 df['iday'] = df['iday'].replace(0, 1)
 df['nkill'].fillna(0, inplace=True, downcast='infer')
+df = df.replace({'Vehicle (not to include vehicle-borne explosives, i.e., car or truck bombs)': 'Vehicle'})
 ##############
 
 # Write to sql Lite
