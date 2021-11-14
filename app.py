@@ -194,7 +194,6 @@ def renderRangeSlider(dataset, val, range):
         )
     )
 
-    print('rendering slider')
     fig.update_xaxes(range=range)
     # if 'range' not in fig.layout.xaxis:
     #     print('range not specified')
@@ -211,12 +210,12 @@ def filterDatasetByWeapon(dataset, weapon):
 
 
 def filterDatasetByDateRange(dataset, sliderState):
-    if sliderState is not None and 'xaxis.range[0]' in sliderState:
-        print('changed data')
+    if sliderState is not None and 'xaxis.range' in sliderState:
+        date_range = [sliderState['xaxis.range'][0], sliderState['xaxis.range'][1]]
+    elif sliderState is not None and 'xaxis.range[0]' in sliderState:
         date_range = [sliderState['xaxis.range[0]'], sliderState['xaxis.range[1]']]
     else:
         date_range = DEFAULT_RANGE
-    print(date_range)
     lowerBound = date_range[0].split(' ')[0].split('-')
     # lowerBound = range[0].split(' ')[0].split('-')
     lowerBound = datetime(int(lowerBound[0]), int(lowerBound[1]), int(lowerBound[2]))
@@ -455,9 +454,8 @@ def updateBarChart(selectedData):
 
 @ app.callback(Output('weapon-chart', 'figure'),
               Input('main-map', 'selectedData'),
-              Input('main-map', 'relayoutData'),
               Input('date-slider', 'relayoutData'),
-              Input('reset-pieChart-weapons-button', 'n_clicks'),
+              Input('reset-weaponChart-selectetData-button', 'n_clicks'),
               Input('reset-weaponChart-weapons-button', 'n_clicks'),
               Input('success-checklist', 'value'),
               Input('deaths-radio', 'value'),
@@ -498,9 +496,10 @@ def resetMapSelectedData(_):
               )
 def updateSliderAccordingly(_, deathsState, sliderState):
     # Extract current date range
-    if sliderState is not None and 'xaxis.range[0]' in sliderState:
-        print(sliderState)
-        range = [sliderState['xaxis.range[0]'].split(' ')[0], sliderState['xaxis.range[1]'].split(' ')[0]]
+    if sliderState is not None and 'xaxis.range' in sliderState:
+        range = [sliderState['xaxis.range'][0], sliderState['xaxis.range'][1]]
+    elif sliderState is not None and 'xaxis.range[0]' in sliderState:
+        range = [sliderState['xaxis.range[0]'], sliderState['xaxis.range[1]']]
     else:
         range = DEFAULT_RANGE
     # Rerender slider based on radio selector value

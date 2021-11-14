@@ -59,9 +59,9 @@ class TerroristData:
     def get_weapon_data(self, eventids=[]):
 
         if len(eventids)==0:
-            df_all = pd.read_sql_query("SELECT eventid, weaptype1_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, country_txt, COUNT(*) as count from attacks", self.conn)
+            df_all = pd.read_sql_query("SELECT eventid, weaptype1_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, country_txt as count from attacks", self.conn)
         else:
-            df_all = pd.read_sql_query(f"SELECT eventid, weaptype1_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, country_txt, COUNT(*) as count from attacks WHERE eventid IN ({','.join(eventids)})", self.conn)
+            df_all = pd.read_sql_query(f"SELECT eventid, weaptype1_txt, iyear, imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, country_txt as count from attacks WHERE eventid IN ({','.join(eventids)})", self.conn)
         return df_all
 
     def get_groups_data(self, eventids=[], year_begin=None, year_end=None):
