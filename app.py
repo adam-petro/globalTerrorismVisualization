@@ -22,6 +22,10 @@ START_YEAR = 1970
 END_YEAR = 2019
 DEFAULT_RANGE = ['1970-01-01', '2019-12-31']
 DEFAULT_RADIO_VAL = 'count'
+HIGHLIGHTED_ATTACKS = pd.read_json('./highlighted_attacks.json',dtype={'date':'datetime','summary':str,'source':str})
+HIGHLIGHTED_ATTACKS['date'] = HIGHLIGHTED_ATTACKS['date'].dt.strftime('%Y-%-m') # format the object
+
+
 
 app = dash.Dash(__name__, external_stylesheets=["https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"],
                 external_scripts=["https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"])
@@ -179,7 +183,12 @@ def filterDatasetByIds(dataset,ids=[]):
 
 def renderRangeSlider(dataset, val, range):
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=list(dataset['date']), y=list(dataset[val]), marker_color='MediumPurple'))
+    dataset['color'] = 'MediumPurple'
+    dataset = dataset.merge(HIGHLIGHTED_ATTACKS,on="date",how='left')
+    print(dataset.summary.dtype)
+    dataset.loc[~dataset.summary.isnull(), 'color'] = "Crimson"
+    print(dataset.loc[dataset['date'] == '2014-6'])
+    fig.add_trace(go.Bar(x=list(dataset['date']), y=list(dataset[val]), marker_color=dataset['color']))
     fig.update_layout(
     xaxis=dict(
         rangeselector=dict(
