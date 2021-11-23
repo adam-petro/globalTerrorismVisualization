@@ -54,6 +54,7 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
         )
         customdata = np.stack((s_dataset['eventid'].array, s_dataset['attacktype1_txt'].array, s_dataset['iday'].array,
                                s_dataset['imonth'].array, s_dataset['iyear'].array), axis=-1)
+
         layer2 = go.Scattermapbox(lon=s_dataset['longitude'], lat=s_dataset['latitude'], marker=marker,
                                   customdata=customdata, hovertemplate="<b>%{customdata[4]}-%{customdata[3]}-%{customdata[2]}</b><br><br>%{customdata[1]}")
         layers = [layer2]
@@ -122,6 +123,7 @@ def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, 
         zoom = 1
     fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
     return fig
+
 
 def renderweaponChart(dataset, highlight=None):
     dataset['color'] = 'lightblue'
@@ -294,9 +296,13 @@ trace1 = go.Bar(
     customdata=bb_data
 )
 
+def make_annotation_item():
+    return dict(text='No data to Display, Please Make selection')
+
 data = [trace1] #combine two charts/columns
 layout = go.Layout(title="Attacks Type")
-fig1 = go.Figure(data=data, layout=layout)
+fig1 = go.Figure(layout=layout)
+fig1.add_annotation(text='No data to Display, Please Make selection')
 fig1.update_layout(
     title=dict(x=0.5), #center the title
     xaxis_title="Attack Type",#setup the x-axis title
