@@ -37,6 +37,9 @@ mapbox_access_token = (open(".mapbox_token").read())
 td = TerroristData()
 
 #global variables to handle call back between maps
+selected_scatter = None
+current_zoom = None
+Current_center = None
 
 def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None, zoom=1, highlight=None):
     if not marker_visible:
@@ -51,14 +54,22 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
         layers = [layer1]
 
     elif marker_visible:
-        marker = dict(
-            opacity=0.3,
-            allowoverlap=True,
-            color="red",
-        )
+        if highlight is not None:
+            marker = dict(
+                opacity=0.99,
+                allowoverlap=True,
+                color="aliceblue",
+            )
+        else:
+            marker = dict(
+                opacity=0.3,
+                allowoverlap=True,
+                color="red",
+            )
 
         customdata = np.stack((s_dataset['eventid'].array, s_dataset['attacktype1_txt'].array, s_dataset['iday'].array,
                                s_dataset['imonth'].array, s_dataset['iyear'].array), axis=-1)
+
         layer2 = go.Scattermapbox(lon=s_dataset['longitude'], lat=s_dataset['latitude'], marker=marker,
                                   customdata=customdata, hovertemplate="<b>%{customdata[4]}-%{customdata[3]}-%{customdata[2]}</b><br><br>%{customdata[1]}")
         layers = [layer2]
@@ -66,7 +77,7 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
             marker2 = dict(
                 opacity=0.3,
                 allowoverlap=True,
-                color="blue",
+                color="#02010B",
             )
             layer2 = go.Scattermapbox(lon=highlight['longitude'], lat=highlight['latitude'], marker=marker2)
             layers.append(layer2)
@@ -89,12 +100,11 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
     return fig
 
 
-
 def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, center=None):
     marker1 = dict(
-        opacity=0.3,
+        opacity=0.99,
         allowoverlap=True,
-        color="red",
+        color="aliceblue",
     )
     customdata = np.stack((s_dataset['eventid'].array, s_dataset['attacktype1_txt'].array, s_dataset['iday'].array,
                            s_dataset['imonth'].array, s_dataset['iyear'].array), axis=-1)
@@ -104,9 +114,9 @@ def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, 
 
 
     marker2 = dict(
-        opacity=0.3,
+        opacity=0.2,
         allowoverlap=True,
-        color="blue",
+        color="red",
     )
 
     layer2 = go.Scattermapbox(lon=sel_dataset['lon'], lat=sel_dataset['lat'], marker=marker2)
@@ -127,6 +137,7 @@ def addSelectScatterLayer(sel_dataset, s_dataset, d_dataset, criterium, zoom=1, 
         zoom = 1
     fig.update_layout(mapbox_zoom=zoom, mapbox_center=center)
     return fig
+
 
 def renderweaponChart(dataset, highlight=None):
     dataset['color'] = 'lightblue'
@@ -306,7 +317,8 @@ trace1 = go.Bar(
 
 data = [trace1] #combine two charts/columns
 layout = go.Layout(title="Attacks Type")
-fig1 = go.Figure(data=data, layout=layout)
+fig1 = go.Figure(layout=layout)
+fig1.add_annotation(text='No data to Display, Please Make selection on scatter plot')
 fig1.update_layout(
     title=dict(x=0.5), #center the title
     xaxis_title="Attack Type",#setup the x-axis title
@@ -322,6 +334,7 @@ layout = dict(
             )
         )
 fig1.update_layout(layout)
+
 
 app.layout = html.Div(children=[
     html.Div(className='main-body container-fluid', children=[
@@ -453,34 +466,78 @@ def resetweaponChartClickData(_):
 
 
 @app.callback(Output('attack-type-chart', 'figure'),
-             Input('main-map', 'selectedData')
+             Input('main-map', 'selectedData'),
+             Input('main-map', 'relayoutData'),
+             Input("attack-type-chart", "clickData"),
+             State('main-map', 'selectedData'),
+             State("main-map", "relayoutData"),
+             State('attack-type-chart', 'clickData')
               )
-def updateAttackTypeChart(selectedData):
+def updateAttackTypeChart(_, __, ___,
+                          selectedData, relayoutData, clickData):
 
-    if selectedData is None:
-        raise PreventUpdate
-    if 'points' in selectedData:
-        ids = []
-        for point in selectedData['points']:
-            ids.append(str(point['customdata'][0]))
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        call_bk_item = None
+    else:
+        call_bk_item = ctx.triggered[0]['prop_id'].split('.')[1]
 
-        bb_data = td.get_data_for_bbox_for_ids(ids)
-        selected_scatter = selectedData
-        attack_type = px.bar(
-            x=bb_data["attacktype1_txt"],
-            y=bb_data["cnt"],
-        )
-        layout = dict(
-            xaxis_title="Weapon Type",  # setup the x-axis title
-            yaxis_title="Count",  # setup the x-axis title
-            xaxis=dict(
-                tickmode="array",
-                tickvals=bb_data["attacktype1_txt"],
-                ticktext=[elem[0:10] for elem in bb_data["attacktype1_txt"]]
+    if relayoutData is not None and call_bk_item == "relayoutData":
+        f = relayoutData
+        if "mapbox.zoom" in f:
+            print(relayoutData)
+            attack_type = px.bar(
+                x=None,
+                y=None,
             )
-        )
-        attack_type.update_layout(layout)
-        return attack_type
+            attack_type.add_annotation(text='No data to Display!, Please Make selection on main map')
+            layout = dict(
+                xaxis_title="Attack Type",  # setup the x-axis title
+                yaxis_title="Count",  # setup the x-axis title
+            )
+            attack_type.update_layout(layout)
+            return attack_type
+        else:
+            raise PreventUpdate
+
+    else:
+        if selectedData is None:
+            raise PreventUpdate
+
+        global selected_scatter
+
+        if 'points' in selectedData:
+            ids = []
+            for point in selectedData['points']:
+                ids.append(str(point['customdata'][0]))
+
+            bb_data = td.get_data_for_bbox_for_ids(ids)
+
+            bb_data['color'] = 'lightblue'
+            if clickData is not None:
+                bb_data.loc[(bb_data['attacktype1_txt'] == clickData['points'][0]['label']  ), ['color']] = 'crimson'
+
+            selected_scatter = selectedData
+
+            attack_type = px.bar(
+                x=bb_data["attacktype1_txt"],
+                y=bb_data["cnt"],
+                color=bb_data['color']
+            )
+            #if clickData is not None:
+                #attack_type['data'][0]['marker']['color'][attackClicked['points'][0]['pointNumber']] = 'red'
+
+            layout = dict(
+                xaxis_title="Attack Type",  # setup the x-axis title
+                yaxis_title="Count",  # setup the x-axis title
+                xaxis=dict(
+                    tickmode="array",
+                    tickvals=bb_data["attacktype1_txt"],
+                    ticktext=[elem[0:10] for elem in bb_data["attacktype1_txt"]]
+                )
+            )
+            attack_type.update_layout(layout)
+            return attack_type
 
 
 @ app.callback(Output('weapon-chart', 'figure'),
@@ -542,6 +599,7 @@ def updateSliderAccordingly(_, deathsState, sliderState):
     fig = renderRangeSlider(df_slider, deathsState, range)
     return fig
 
+
 @ app.callback(Output('main-map', 'figure'),
               Input('main-map', 'relayoutData'),
               Input('date-slider', 'relayoutData'),
@@ -562,6 +620,11 @@ def updateSliderAccordingly(_, deathsState, sliderState):
               )
 def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
                          mapFigure, successState, deathsState, weaponChartState, attackTypeState, sliderState, countries, mainMapSelectedData):
+    ctx = dash.callback_context
+    call_bk_item = None
+    if ctx.triggered:
+        call_bk_item = ctx.triggered[0]['prop_id'].split('.')[0]
+
     # Filter by year
     df_lat_long_fil=filterDatasetByDateRange(df_lat_long, sliderState)
     df_scat_fil=filterDatasetByDateRange(df_scat, sliderState)
@@ -583,26 +646,29 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
     zoom = mapFigure['layout']['mapbox']['zoom']
     center = mapFigure['layout']['mapbox']['center']
 
-    highlight=None
+    ###############################
+    # This step is used to handle bar click event and update map accordingly
+    #####################################
+    # we need context as once bar is clicked event remains active
     ids = []
-    ## Get all the selected points
-    if mainMapSelectedData != None and mainMapSelectedData['points'] != None and len(mainMapSelectedData['points']) != 0:
-        for pt in mainMapSelectedData['points']:
-            ids.append(pt['customdata'][0])
+    highlight=None
     ## Highlight the selected
-    if attackTypeState is not None:
-        attack_type=attackTypeState["points"][0]['label']
-        highlight = filterDatasetByIds(df_scat_fil,ids)
-        highlight=filterDatasetByAttacktype(highlight, attack_type)
-        df_lat_long_fil=filterDatasetByAttacktype(df_lat_long, attack_type)
+    if call_bk_item == 'attack-type-chart':
+        ## Get all the selected points
+        if mainMapSelectedData != None and mainMapSelectedData['points'] != None and len(
+                mainMapSelectedData['points']) != 0:
+            for pt in selected_scatter['points']:
+                ids.append(pt['customdata'][0])
 
-    
+        attack_type = attackTypeState["points"][0]['label']
+        highlight = filterDatasetByIds(df_scat_fil, ids)
+
+
     if weaponChartState is not None:
         weapon=weaponChartState["points"][0]['label']
         highlight=filterDatasetByWeapon(highlight, weapon)
         highlight=filterDatasetByWeapon(highlight, weapon)
         df_lat_long_fil=filterDatasetByWeapon(df_lat_long, weapon)
-
 
     # Update the map with the existing or new data
     if zoom > 2.5:
