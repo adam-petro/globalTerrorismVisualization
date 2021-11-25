@@ -144,7 +144,7 @@ def renderweaponChart(dataset, highlight=None):
             layout=go.Layout(
             title="Weapon type",
             autosize=True,
-            margin=dict(b=10, l=0, r=0),
+            margin=dict(b=10, l=0, r=0, t=40),
             showlegend=False))
         fig.add_annotation(
             text='No data to display. Use the bounding box tool to make a selection on the dotmap.')
@@ -171,7 +171,7 @@ def renderAttackTypeChart(dataset, highlight=None):
             layout=go.Layout(
             title="Attack type",
             autosize=True,
-            margin=dict(b=10, l=0, r=0),
+            margin=dict(b=10, l=0, r=0, t=40),
             showlegend=False))
         fig.add_annotation(
             text='No data to display. Use the bounding box tool to make a selection on the dotmap.')
