@@ -48,10 +48,10 @@ class TerroristData:
 
     def get_data_for_scat(self, year=None):
         if year is None:
-            df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, attacktype1_txt, iyear, "
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, iyear, "
                                        "imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, attacktype1_txt, weaptype1_txt from attacks", self.conn)
         else:
-            df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, attacktype1_txt, iyear, "
+            df_all = pd.read_sql_query("SELECT eventid, country_txt, longitude,latitude, iyear, "
                                        "imonth, iday, (iyear || '-' || imonth || '-' || iday) as date, success, attacktype1_txt, weaptype1_txt from attacks where "
                                        "iyear <= {}".format(year), self.conn)
         return df_all

@@ -56,6 +56,7 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
             allowoverlap=True,
             color="red",
         )
+
         customdata = np.stack((s_dataset['eventid'].array, s_dataset['attacktype1_txt'].array, s_dataset['iday'].array,
                                s_dataset['imonth'].array, s_dataset['iyear'].array), axis=-1)
         layer2 = go.Scattermapbox(lon=s_dataset['longitude'], lat=s_dataset['latitude'], marker=marker,
@@ -458,9 +459,6 @@ def updateAttackTypeChart(selectedData):
 
     if selectedData is None:
         raise PreventUpdate
-
-    global selected_scatter
-
     if 'points' in selectedData:
         ids = []
         for point in selectedData['points']:
@@ -589,7 +587,7 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______,________,
     ids = []
     ## Get all the selected points
     if mainMapSelectedData != None and mainMapSelectedData['points'] != None and len(mainMapSelectedData['points']) != 0:
-        for pt in selected_scatter['points']:
+        for pt in mainMapSelectedData['points']:
             ids.append(pt['customdata'][0])
     ## Highlight the selected
     if attackTypeState is not None:
