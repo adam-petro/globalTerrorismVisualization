@@ -92,12 +92,12 @@ class TerroristData:
         return df_all
 
     def get_aggregated_data_by_month(self, success=None):
-        if success is None:
+        if success == None or (1 in success and 0 in success):
             df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
-        elif success == 0:
-            df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks where success=0 GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
-        elif success == 1:
+        elif 1 in success and 0 not in success:
             df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks where success=1 GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
+        elif 1 not in success and 0 in success:
+            df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks where success=0 GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
         return df_all
 
     def close_conn(self):

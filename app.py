@@ -575,12 +575,7 @@ def updateSliderAccordingly(_,__, deathsState, sliderState, successState):
         range = [sliderState['xaxis.range[0]'], sliderState['xaxis.range[1]']]
     else:
         range = DEFAULT_RANGE
-    if 1 in successState and 0 in successState:
-        dataset = td.get_aggregated_data_by_month()
-    elif 1 in successState and 0 not in successState:
-        dataset = td.get_aggregated_data_by_month(1)
-    elif 1 not in successState and 0 in successState:
-        dataset = td.get_aggregated_data_by_month(0)
+    dataset = td.get_aggregated_data_by_month(successState)
     # Rerender slider based on radio selector value
     fig = renderRangeSlider(dataset, deathsState, range)
     return fig
