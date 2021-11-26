@@ -161,6 +161,11 @@ def renderweaponChart(dataset, highlight=None):
         autosize=True,
         margin=dict(b=10, l=0, r=0),
         showlegend=False))
+    fig.update_layout(yaxis=dict(
+        title='Count',
+        titlefont_size=16,
+        tickfont_size=14,
+    ))
     return fig
 
 
@@ -188,6 +193,11 @@ def renderAttackTypeChart(dataset, highlight=None):
         autosize=True,
         margin=dict(b=10, l=0, r=0),
         showlegend=False))
+    fig.update_layout(yaxis=dict(
+        title='Count',
+        titlefont_size=16,
+        tickfont_size=14,
+    ))
     return fig
 
 
@@ -439,10 +449,15 @@ app.layout = html.Div(children=[
                     ]
                 ),
             ]),
-            html.Div(className='additional-chart col-4',
+            html.Div(style={'marginTop': -25},className='additional-chart col-4',
                      children=[
                          dcc.Graph(id='weapon-chart',
                                    figure=go.Figure(weaponChart)),
+                         dcc.Graph(
+                             id='attack-type-chart',
+                             figure=fig1,
+                             # config={"displayModeBar": False},
+                         ),
                          html.Div(className="alert alert-secondary", children=[
                              html.Div(className="row", children=[
                                  html.Div(className="col d-flex flex-column justify-content-between", children=[
@@ -460,11 +475,7 @@ app.layout = html.Div(children=[
                                          "Reset Selection", className="btn btn-primary w-75", id="reset-weaponChart-selectetData-button")
                                  ])
                              ]),
-                         ]), dcc.Graph(
-                             id='attack-type-chart',
-                             figure=fig1,
-                             # config={"displayModeBar": False},
-                         )]),
+                         ])]),
 
             # html.Div(className='additional-chart',
             #          children=[dcc.Graph(id='stacked-area-chart', figure=go.Figure(stackedAreaChart))])
@@ -551,10 +562,12 @@ def resetMapSelectedData(_):
 
 @app.callback(Output('date-slider', 'figure'),
               Input('deaths-radio', 'value'),
+              Input('success-checklist', 'value'),
               State('deaths-radio', 'value'),
-              State('date-slider', 'relayoutData')
+              State('date-slider', 'relayoutData'),
+              State('success-checklist', 'value'),
               )
-def updateSliderAccordingly(_, deathsState, sliderState):
+def updateSliderAccordingly(_,__, deathsState, sliderState, successState):
     # Extract current date range
     if sliderState is not None and 'xaxis.range' in sliderState:
         range = [sliderState['xaxis.range'][0], sliderState['xaxis.range'][1]]
@@ -562,8 +575,14 @@ def updateSliderAccordingly(_, deathsState, sliderState):
         range = [sliderState['xaxis.range[0]'], sliderState['xaxis.range[1]']]
     else:
         range = DEFAULT_RANGE
+    if 1 in successState and 0 in successState:
+        dataset = td.get_aggregated_data_by_month()
+    elif 1 in successState and 0 not in successState:
+        dataset = td.get_aggregated_data_by_month(1)
+    elif 1 not in successState and 0 in successState:
+        dataset = td.get_aggregated_data_by_month(0)
     # Rerender slider based on radio selector value
-    fig = renderRangeSlider(df_slider, deathsState, range)
+    fig = renderRangeSlider(dataset, deathsState, range)
     return fig
 
 
@@ -625,9 +644,12 @@ def updateMapAccordingly(_, __, ___, ____, _____, ______, _______, ________,
         if call_bk_item == 'attack-type-chart':
             attack_type = attackTypeState["points"][0]['label']
             highlight = filterDatasetByAttacktype(highlight, attack_type)
-        if call_bk_item == 'weapon-chart':
+        elif call_bk_item == 'weapon-chart':
             weapon = weaponChartState["points"][0]['label']
             highlight = filterDatasetByWeapon(highlight, weapon)
+        else:
+            highlight=None
+
 
     # Update the map with the existing or new data
     if zoom > 2.5:

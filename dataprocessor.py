@@ -91,8 +91,13 @@ class TerroristData:
         df_all = pd.read_sql_query("SELECT gname, COUNT(*) as count from attacks WHERE nkill is not null and gname != 'Unknown' GROUP BY gname ORDER BY count DESC", self.conn)
         return df_all
 
-    def get_aggregated_data_by_month(self):
-        df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
+    def get_aggregated_data_by_month(self, success=None):
+        if success is None:
+            df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
+        elif success == 0:
+            df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks where success=0 GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
+        elif success == 1:
+            df_all = pd.read_sql_query("SELECT (iyear || '-' || imonth) as date, SUM(nkill) as nkill, COUNT(*) as count from attacks where success=1 GROUP BY date ORDER BY iyear, imonth ASC", self.conn)
         return df_all
 
     def close_conn(self):
