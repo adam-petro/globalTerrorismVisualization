@@ -29,9 +29,12 @@ HIGHLIGHTED_ATTACKS['date'] = HIGHLIGHTED_ATTACKS['date'].dt.strftime(
     '%Y-%-m')  # format the object
 SELECTED_ATTACK_TYPE_COLUMN = None
 SELECTED_WEAPON_TYPE_COLUMN = None
-DEFAULT_COLOR = '#003f5c'
-SELECTION_COLOR = '#bc5090'
-HIGHLIGHT_COLOR = '#ffa600'
+# DEFAULT_COLOR = '#ffa600'
+# SELECTION_COLOR = '#bc5090'
+# HIGHLIGHT_COLOR = '#003f5c'
+DEFAULT_COLOR = '#1b9e77'
+SELECTION_COLOR = '#d95f02'
+HIGHLIGHT_COLOR = '#003f5c'
 
 
 app = dash.Dash(__name__, external_stylesheets=["https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"],
@@ -60,9 +63,11 @@ def renderMap(s_dataset, d_dataset, criterium, marker_visible=False, center=None
 
     elif marker_visible:
         s_dataset['color'] = DEFAULT_COLOR
-        s_dataset['opacity'] = 0.5
+        s_dataset['opacity'] = 0.33
         s_dataset.loc[s_dataset['eventid'].isin(
             selectedData), 'color'] = SELECTION_COLOR
+        s_dataset.loc[s_dataset['eventid'].isin(
+            selectedData), 'opacity'] = 0.66
 
         if highlight is not None:
             s_dataset.loc[s_dataset['eventid'].isin(highlight), ['color', 'opacity']] = [
@@ -166,15 +171,15 @@ def filterDatasetByIds(dataset, ids=[]):
 
 def renderRangeSlider(dataset, val, range):
     fig = go.Figure()
-    dataset['color'] = SELECTION_COLOR
+    dataset['color'] = "#25d9a3"
     
-    dataset = dataset.merge(HIGHLIGHTED_ATTACKS, on="date", how='left')
-    dataset.loc[~dataset.summary.isnull(), 'color'] = HIGHLIGHT_COLOR
+    # dataset = dataset.merge(HIGHLIGHTED_ATTACKS, on="date", how='left')
+    # dataset.loc[~dataset.summary.isnull(), 'color'] = "#0b4030"
 
-    customdata = np.stack((dataset['summary'].array,dataset['source'].array,dataset['date'].array), axis=-1)
+    # customdata = np.stack((dataset['summary'].array,dataset['source'].array,dataset['date'].array), axis=-1)
 
     fig.add_trace(go.Bar(x=list(dataset['date']), y=list(
-        dataset[val]), marker_color=dataset['color'],customdata=customdata, hovertemplate="%{customdata[0]}<extra></extra>"))
+        dataset[val]), marker_color=dataset['color']))
     fig.update_layout(
         margin=dict(l=0, r=20, t=60, b=20),
         xaxis=dict(
